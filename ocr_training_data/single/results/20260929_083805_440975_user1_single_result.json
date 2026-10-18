@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260929_083805_440975",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "请确认商 感谢您 请确认商品 CN C1264466 PackID:C1264466260801390082 ICNo.:ICC126446626080174() From:PL REFNo.:JD1279108 TO:PLROKB SKU NO. Batch.No...QTY 6HG10470BK 25 感谢 0174 PACK 25 Th- PCS MYSELR Made In China ofIC PLROKB 压放 的惠顾 请确 完好后签收！ 防潮防压 小心轻放",
+    "inverted": "请确认商 感谢您 请确认商品 C1264466 Pack ID: C1264466260801390082 IC No.:ICC126446626080174(1) From: PL REFNO.:JD1279108 PLROKB Batch.No. SKL NO 6HG10470BK 25 感谢 0174 PACK A2 TH- MYSELF Made Tm China orn PLROKB 请确 完好后签收！ 防潮防压 小心轻放",
+    "contrast": "请确认 感谢您 请确认商品 CN C1264466 Pack ID:C1264466260801390082 ICNo.:ICC126446626080174（4) From:PL REFNo.:JD1279108 TO:PLROKB SKU NO. Batch.N...QTY. 6HG10470BK 25 感谢 0174 PACK 25 TH- PCS MYSELR Made In China PLROKB 压放 的惠顾 请确 完好后签收！ 防潮防压 小心轻放",
+    "binary": "认商 请确认商品 经放 CN C1264466 Pack [D: C1264466260801390082 IC No. : ICC126446626080174(4) Fron: PL REF No. : JD1279108 TO: PIROKB SKU NO. Balch.No...oTy 6HG10470BK 25 0174 25 Th. HISELF Madeln Chilut PLROKB"
+  },
+  "extracted_data": {
+    "cell": "0174",
+    "qtyPack": 25,
+    "prefix": "TH",
+    "zone": "P"
+  },
+  "image_path": "ocr_training_data/single/images/20260929_083805_440975_user1_single_original.jpg"
+}

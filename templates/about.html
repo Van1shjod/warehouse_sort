@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Про нас - Flask Додаток</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <a href="/">Головна</a>
+        <a href="/about">Про нас</a>
+    </nav>
+
+    <div class="container">
+        <h1>Про цей проект</h1>
+        <p>Це Flask веб-додаток, який працює на Android через Termux.</p>
+        <ul>
+            <li>Backend: Python Flask</li>
+            <li>Frontend: HTML, CSS, JavaScript</li>
+            <li>Хост: Ваш телефон</li>
+        </ul>
+    </div>
+</body>
+</html>

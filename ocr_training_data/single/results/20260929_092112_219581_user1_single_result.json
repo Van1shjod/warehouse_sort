@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260929_092112_219581",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "CN C1008457 Pack ID:C1008457260720170076 ICNo.：ICC1008457260720229 From: CN REFNo.:JD30000235 TO:PLROKB NO. SKU Batch NO. QTY 3HG1120 0229 PACK -ZO PCS Made in China MYSELF 11 ofIC PLROKB",
+    "inverted": "008457 Pack ID: C1008457260720170076 IC No.:ICC1008457260720229 From: CN REFNo.:JD30000235 TO: PLROKB SKU Bateh No 3HG1120 0229 PACK OZB Made MYSELF",
+    "contrast": "CN C1008457 Pack ID:C1008457260720170076 ICNo.:ICC1008457260720229 From:CN REFNo.:JD30000235 To: PLROKB NO. SKU Batch NO. QTY 3HG1120 0229 PACK -ZO PCS Made in China MYSELF ofIC PLROKB",
+    "binary": "CN C1008457 Pack ID: C1008457260720170076 ICNo. :ICC1008457260720229 From: CN REF No.: JD30000235 To: PLROKB NO. SKU Batch NO. QTY 3HG1120 0229 PACK OZ- PCS Made in China MYSELF of_lc PLROKB"
+  },
+  "extracted_data": {
+    "cell": "0229",
+    "qtyPack": 11,
+    "prefix": "OZ",
+    "zone": "B"
+  },
+  "image_path": "ocr_training_data/single/images/20260929_092112_219581_user1_single_original.jpg"
+}

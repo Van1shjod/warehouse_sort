@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260929_082116_250143",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "C1008458 CN TO:DLRONB REFNO.JD1279053 Batch NoQTY NO 19 0122 19 MQ- MYSELF Made In Chiaa PLROKB 37",
+    "inverted": "0122 19 MQ： MYSDU PLROKB",
+    "contrast": "C1008458 CN TOTDLROKR REPNODIPOOBd BRU BatchNoony 19 0122 19 MQ- MYSELE Madeln China PLROKB 37",
+    "binary": "lAu.:Jnliwob3 ah!! 0122 19 MQ- MYSELI? MiuelnChiud PLROKB"
+  },
+  "extracted_data": {
+    "cell": "0122",
+    "qtyPack": 19,
+    "prefix": "MQ",
+    "zone": "M"
+  },
+  "image_path": "ocr_training_data/single/images/20260929_082116_250143_user1_single_original.jpg"
+}

@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260928_062826_931801",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "NPE26072 D1278 CN C1008487 Pack TO:C100s48726074380037 ICNo.:ICC10084872607241 fom: PL REF NO-JD1278084 TO:PIROKh NO SAU Ratch NO QTY 6TY3206 16 NO 4162 AE- 16 X3 MYSELR MadeIn Chinn PLROKB",
+    "inverted": "NPE26072 D1278 Pack 10sC100546725n7e430037 1CN.:XCCI05A8T200T201C Tome PL REFND-J012780SA TO PLROKA 6TY3206 16 NO 4162 16 AE- X3 Mndro In Cnfrd PLROKB 21",
+    "contrast": "NPE26072 D1278 2026- CN C1008187 PackTD:C100S487260794380037 IC-No.:1CC0084872607241C fomPL REFNo-JD1278084 ZO:DLROKh Datoh NO 6TY3206 16 4162 AE- 16 X3 YSELF MadeIn Chin PLROKB 21",
+    "binary": "D1278 PE26072 欧盟海运 14 CN C1008487 Pack 10: C100s4n79607:43s009 No. :10100848726072 11t- Iom: P! REF No. - JD12780S4 To:PROKI ertt.h Nol. 6TY3206 4162 Ae- 16 SELP MadranChllun PLB 21"
+  },
+  "extracted_data": {
+    "cell": "4162",
+    "qtyPack": 10,
+    "prefix": "NO",
+    "zone": "I"
+  },
+  "image_path": "ocr_training_data/single/images/20260928_062826_931801_user1_single_original.jpg"
+}

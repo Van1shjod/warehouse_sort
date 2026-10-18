@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260930_114846_317475",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "C100845 CN Pack ID:C1008455260817200034 From: CN IC No.1CC100845526081718（16) To:PLROKB REFNo.:JD20005056 Batch NO. QTY SKU NO. 20 1HG1212AS 1718 PACK 20 HN- PCS MYSELF Made In China PLROKB",
+    "inverted": "C100845 CN PackID:C1008455260817200034 From: CN IC No.:ICC100845526081718(16) TO: PLROKB REFNo.:JD20005056 Batch No. QTY SHU NO. 20 1HG1212AS 1718 PACK 20 HN- PCS WSELF Made In China PLROKB ofIC",
+    "contrast": "C100845 CN Pack ID:C1008455260817200034 From:CN IC No.:1CC100845526081718（16) To:PLROKB REFNo.:JD20005056 Batch NO. QTY SKU NO. 20 1HG1212AS 1718 PACK 20 HN- PCS MSELF Made In China PLROKB",
+    "binary": "C10084F CN Pack TD: C1008455260817200034 From: CN ICho. :1CC100845526081718(16) To: PLROKB REF N0. :JD20005056 Batch.NO....QTY SKU ON 20 1HG1212AS 1718 PACK 20 Hn- MSELP Made In China PLROKB o1 It"
+  },
+  "extracted_data": {
+    "cell": "1718",
+    "qtyPack": 20,
+    "prefix": "HN",
+    "zone": "P"
+  },
+  "image_path": "ocr_training_data/single/images/20260930_114846_317475_user1_single_original.jpg"
+}

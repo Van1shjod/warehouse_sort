@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Lider Panel - Warehouse System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <h2>📊 Lider Панель</h2>
+            <div class="nav-right">
+                <a href="/dashboard" class="btn btn-small">🏠 Dashboard</a>
+                <a href="/logout" class="btn btn-small btn-danger">🚪 Вихід</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="admin-tabs">
+            <button class="tab-btn active" onclick="showLiderTab('sorts')">🏭 Сорти</button>
+            <button class="tab-btn" onclick="showLiderTab('containers')">📦 Контейнери</button>
+            <button class="tab-btn" onclick="showLiderTab('pallets')">🏷️ Палети</button>
+            <button class="tab-btn" onclick="showLiderTab('icc')">🔢 ICC Коди</button>
+            <button class="tab-btn" onclick="showLiderTab('users')">👥 Користувачі</button>
+        </div>
+
+        <!-- Таб сортів -->
+        <div id="lider-sorts" class="admin-tab-content fade-in">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>🏭 Сорти (Зони/Рампи)</h2>
+                <button class="btn btn-primary" onclick="showCreateSortModal()">➕ Відкрити новий сорт</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>🏭 Назва</th>
+                            <th>📋 Тип</th>
+                            <th>📅 Дата розвантаження</th>
+                            <th>📝 Опис</th>
+                            <th>👥 Хто працює</th>
+                            <th>📊 Прогрес</th>
+                            <th>✅ Статус</th>
+                            <th>⚙️ Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sorts-table-body">
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 2rem;">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Таб контейнерів -->
+        <div id="lider-containers" class="admin-tab-content" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>📦 Контейнери та працівники</h2>
+                <button class="btn btn-primary" onclick="showCreateContainerModal()">➕ Створити контейнер</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>📦 Номер контейнера</th>
+                            <th>👥 Хто працює</th>
+                            <th>📊 Статус</th>
+                            <th>📅 Створено</th>
+                            <th>⚙️ Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody id="containers-table-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 2rem;">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Таб палет -->
+        <div id="lider-pallets" class="admin-tab-content" style="display: none;">
+            <h2>📦 Інформація про палети</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>🏷️ Номер</th>
+                            <th>🔢 ICC</th>
+                            <th>📋 Тип</th>
+                            <th>📦 Картонів</th>
+                            <th>👤 Користувач</th>
+                            <th>📊 Статус</th>
+                            <th>📅 Створено</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pallets-table-body">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem;">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Таб ICC кодів -->
+        <div id="lider-icc" class="admin-tab-content" style="display: none;">
+            <h2>🏷️ ICC Коди</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>🔢 ICC Код</th>
+                            <th>📋 Тип</th>
+                            <th>📊 Прогрес</th>
+                            <th>📦 Картонів</th>
+                            <th>✅ Статус</th>
+                            <th>📅 Створено</th>
+                        </tr>
+                    </thead>
+                    <tbody id="icc-table-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 2rem;">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Таб користувачів -->
+        <div id="lider-users" class="admin-tab-content" style="display: none;">
+            <h2>👥 Активність користувачів</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>👤 Логін</th>
+                            <th>🎭 Роль</th>
+                            <th>📦 Картонів всього</th>
+                            <th>📅 Дата реєстрації</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 2rem;">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Легенда для типів -->
+        <div style="margin-top: 2rem; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="margin-bottom: 1rem;">📋 Легенда типів</h3>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <span style="padding: 0.5rem 1rem; background: #4285F4; color: white; border-radius: 8px; font-weight: 600;">🔵 Single</span>
+                <span style="padding: 0.5rem 1rem; background: #9C27B0; color: white; border-radius: 8px; font-weight: 600;">🟣 Mix</span>
+                <span style="padding: 0.5rem 1rem; background: #0F9D58; color: white; border-radius: 8px; font-weight: 600;">🟢 Vevor</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно створення контейнера -->
+    <div id="create-container-modal" class="modal" style="display: none;">
+        <div class="modal-content fade-in">
+            <h2>Створити новий контейнер</h2>
+            <div class="form-card">
+                <div class="form-group">
+                    <label>Номер контейнера</label>
+                    <input type="text" id="new-container-number" placeholder="Введіть номер контейнера" autocomplete="off" style="text-transform: uppercase;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button class="btn btn-secondary" onclick="closeCreateContainerModal()" style="flex: 1;">Скасувати</button>
+                <button class="btn btn-large btn-success" onclick="createContainer()" style="flex: 2;">Створити</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно створення сорту -->
+    <div id="create-sort-modal" class="modal" style="display: none;">
+        <div class="modal-content fade-in" style="max-width: 600px;">
+            <h2>Відкрити новий сорт</h2>
+            <div class="form-card">
+                <div class="form-group">
+                    <label>Назва зони/рампи *</label>
+                    <input type="text" id="new-sort-name" placeholder="Наприклад: Зона А, Рампа 5" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Тип *</label>
+                    <select id="new-sort-type" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                        <option value="zone">Зона</option>
+                        <option value="ramp">Рампа</option>
+                        <option value="container">Контейнер</option>
+                        <option value="other">Інше</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Дата розвантаження *</label>
+                    <input type="date" id="new-sort-date" autocomplete="off" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                </div>
+                <div class="form-group">
+                    <label>Опис (типи картонів, примітки)</label>
+                    <textarea id="new-sort-description" placeholder="Що за товар, особливості тощо..." rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button class="btn btn-secondary" onclick="closeCreateSortModal()" style="flex: 1;">Скасувати</button>
+                <button class="btn btn-large btn-success" onclick="createSort()" style="flex: 2;">Відкрити сорт</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='lider.js') }}"></script>
+</body>
+</html>

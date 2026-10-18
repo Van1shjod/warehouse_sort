@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Admin Panel - Warehouse System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin-mobile.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <h2>Адмін Панель</h2>
+            <div class="nav-right">
+                <a href="/dashboard" class="btn btn-small">Dashboard</a>
+                <a href="/logout" class="btn btn-small btn-danger">Вихід</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="admin-tabs">
+            <button class="tab-btn active" onclick="showAdminTab('sort')">Сортування</button>
+            <button class="tab-btn" onclick="showAdminTab('users')">Користувачі</button>
+            <button class="tab-btn" onclick="showAdminTab('activity')">Активність</button>
+            <button class="tab-btn" onclick="showAdminTab('ocr')">OCR Логи</button>
+            <button class="tab-btn" onclick="showAdminTab('create')">Створити акаунт</button>
+        </div>
+
+        <!-- Таб сортування (містить дві підвкладки) -->
+        <div id="admin-sort" class="admin-tab-content fade-in">
+            <div class="sort-subtabs">
+                <button class="sort-subtab-btn active" onclick="showSortSubtab('sorting')">В процесі</button>
+                <button class="sort-subtab-btn" onclick="showSortSubtab('completed')">Завершені</button>
+                <button class="sort-subtab-btn" onclick="showSortSubtab('pallets')">Палети</button>
+                <button class="sort-subtab-btn" onclick="showSortSubtab('create-sort')">Створити сорт</button>
+            </div>
+
+            <!-- Підвкладка: В процесі -->
+            <div id="admin-sorting" class="sort-subtab-content">
+                <h2>Картони в процесі сортування</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ICC Код</th>
+                                <th>Тип</th>
+                                <th>Прогрес</th>
+                                <th>Локація</th>
+                                <th>Відкриті палети</th>
+                                <th>Статус</th>
+                                <th>Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sorting-table-body">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem;">
+                                    <div class="spinner"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Підвкладка: Завершені -->
+            <div id="admin-completed" class="sort-subtab-content" style="display: none;">
+                <h2>Завершені картони</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ICC Код</th>
+                                <th>Тип</th>
+                                <th>Кількість</th>
+                                <th>Локація</th>
+                                <th>Палет</th>
+                                <th>Створено</th>
+                                <th>Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody id="completed-table-body">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem;">
+                                    <div class="spinner"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Підвкладка: Палети -->
+            <div id="admin-pallets" class="sort-subtab-content" style="display: none;">
+                <h2>Палети</h2>
+                <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
+                    <button class="btn btn-small pallet-filter-btn active" onclick="filterPallets('all')">Всі</button>
+                    <button class="btn btn-small pallet-filter-btn" onclick="filterPallets('open')">Відкриті</button>
+                    <button class="btn btn-small pallet-filter-btn" onclick="filterPallets('closed')">Закриті</button>
+                    <button class="btn btn-small pallet-filter-btn" onclick="filterPallets('single')">Single</button>
+                    <button class="btn btn-small pallet-filter-btn" onclick="filterPallets('mix')">Mix</button>
+                    <button class="btn btn-small pallet-filter-btn" onclick="filterPallets('vevor')">Vevor</button>
+                </div>
+                <div id="pallets-summary" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;"></div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Номер палети</th>
+                                <th>Тип</th>
+                                <th>ICC Код</th>
+                                <th>Картонів</th>
+                                <th>Користувач</th>
+                                <th>Статус</th>
+                                <th>Створено</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pallets-table-body">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem;">
+                                    <div class="spinner"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Підвкладка: Створити сорт -->
+            <div id="admin-create-sort" class="sort-subtab-content" style="display: none;">
+                <h2>Створити новий сорт</h2>
+
+                <!-- Активні сорти -->
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">🏭 Активні сорти</h3>
+                    <div id="active-sorts-list" style="display: grid; gap: 1rem;">
+                        <div style="text-align: center; padding: 2rem; background: #f5f5f5; border-radius: 8px;">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Форма створення сорту -->
+                <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 800px;">
+                    <h3 style="margin-bottom: 1.5rem;">➕ Створити новий сорт</h3>
+
+                    <div class="form-card">
+                        <!-- Тип локації -->
+                        <div class="form-group">
+                            <label>Тип локації *</label>
+                            <select id="sort-location-type" onchange="updateLocationOptions()" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                                <option value="">-- Оберіть тип --</option>
+                                <option value="zona-single">Zona Single (A, B, C)</option>
+                                <option value="zona-mix">Zona Mix (A, B, C)</option>
+                                <option value="rampa">Rampa (1-9)</option>
+                            </select>
+                        </div>
+
+                        <!-- Конкретна локація -->
+                        <div class="form-group" id="location-select-group" style="display: none;">
+                            <label id="location-label">Локація *</label>
+                            <select id="sort-location" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                                <option value="">-- Оберіть локацію --</option>
+                            </select>
+                        </div>
+
+                        <!-- Типи картонів -->
+                        <div class="form-group">
+                            <label>Типи картонів (можна вибрати кілька) *</label>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; background: #f5f5f5; border-radius: 8px; border: 2px solid transparent;">
+                                    <input type="checkbox" id="type-single" value="single" onchange="updateSortPreview()">
+                                    <span style="font-weight: 600; color: #4285F4;">Single</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; background: #f5f5f5; border-radius: 8px; border: 2px solid transparent;">
+                                    <input type="checkbox" id="type-mix" value="mix" onchange="updateSortPreview()">
+                                    <span style="font-weight: 600; color: #9C27B0;">Mix</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; background: #f5f5f5; border-radius: 8px; border: 2px solid transparent;">
+                                    <input type="checkbox" id="type-vevor" value="vevor" onchange="updateSortPreview()">
+                                    <span style="font-weight: 600; color: #0F9D58;">Vevor</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Дата розвантаження (опціонально) -->
+                        <div class="form-group">
+                            <label>Дата розвантаження (опціонально)</label>
+                            <input type="date" id="sort-unload-date" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                        </div>
+
+                        <!-- Примітки -->
+                        <div class="form-group">
+                            <label>Примітки (опціонально)</label>
+                            <textarea id="sort-notes" placeholder="Додаткова інформація про сорт..." rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; resize: vertical;"></textarea>
+                        </div>
+
+                        <!-- Попередній перегляд -->
+                        <div id="sort-preview" style="display: none; margin-top: 1rem; padding: 1rem; background: #e3f2fd; border-radius: 8px; border: 2px solid #2196F3;">
+                            <strong>Попередній перегляд:</strong>
+                            <div id="sort-preview-text" style="margin-top: 0.5rem; font-size: 1.1rem; color: #0d47a1;"></div>
+                        </div>
+
+                        <button class="btn btn-large btn-success" onclick="createNewSort()" style="width: 100%; margin-top: 1.5rem;">
+                            ✓ Створити сорт
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таб користувачів -->
+        <div id="admin-users" class="admin-tab-content" style="display: none;">
+            <h2>Користувачі системи</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Логін</th>
+                            <th>Роль</th>
+                            <th>Статус</th>
+                            <th>Картонів</th>
+                            <th>Реєстрація</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem;">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Таб активності -->
+        <div id="admin-activity" class="admin-tab-content" style="display: none;">
+            <div style="display: grid; grid-template-columns: 300px 1fr; gap: 1.5rem;">
+                <!-- Список користувачів ліворуч -->
+                <div>
+                    <h3 style="margin-bottom: 1rem;">Користувачі</h3>
+                    <div id="users-list" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="padding: 1rem; text-align: center;">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Журнал активності праворуч -->
+                <div>
+                    <h3 style="margin-bottom: 1rem;" id="activity-title">Вся активність</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Час</th>
+                                    <th>Користувач</th>
+                                    <th>Дія</th>
+                                    <th>Деталі</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activity-table-body">
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 2rem;">
+                                        <div class="spinner"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таб OCR логів -->
+        <div id="admin-ocr" class="admin-tab-content" style="display: none;">
+            <h2>OCR Сканування</h2>
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
+                <button class="btn btn-small ocr-filter-btn active" onclick="filterOcr('all')">Всі</button>
+                <button class="btn btn-small ocr-filter-btn" onclick="filterOcr('single')">Single</button>
+                <button class="btn btn-small ocr-filter-btn" onclick="filterOcr('mix')">Mix</button>
+                <button class="btn btn-small ocr-filter-btn" onclick="filterOcr('vevor')">Vevor</button>
+                <button class="btn btn-small ocr-filter-btn" onclick="filterOcr('success')">Успішні</button>
+                <button class="btn btn-small ocr-filter-btn" onclick="filterOcr('fail')">Невдалі</button>
+                <button id="ocr-sort-btn" class="btn btn-small" onclick="toggleOcrSort()" style="margin-left: auto; background:#f0f0f0; color:#555; border:none;">↓ Нові спочатку</button>
+            </div>
+            <div id="ocr-list" style="display: grid; gap: 1rem;">
+                <div style="text-align: center; padding: 2rem;"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Таб створення акаунтів -->
+        <div id="admin-create" class="admin-tab-content" style="display: none;">
+            <h2>Створити новий акаунт</h2>
+            <div class="form-card">
+                <form id="create-account-form">
+                    <div class="form-group">
+                        <label>Логін</label>
+                        <input type="text" id="account-username" required autocomplete="off" placeholder="Введіть логін">
+                    </div>
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" id="account-password" required autocomplete="new-password" placeholder="Введіть пароль">
+                    </div>
+                    <div class="form-group">
+                        <label>Роль</label>
+                        <select id="account-role" class="form-select">
+                            <option value="user">User (Звичайний користувач)</option>
+                            <option value="admin">Admin (Повний доступ)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Створити акаунт</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно редагування ICC коду -->
+    <div id="edit-icc-modal" class="modal" style="display: none;">
+        <div class="modal-content fade-in">
+            <h2>Редагувати ICC код</h2>
+            <div class="form-card" style="margin-top: 1.5rem;">
+                <div class="form-group">
+                    <label>ICC Код (останні 4 цифри)</label>
+                    <input type="text" id="edit-icc-code" readonly style="background: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label>Тип</label>
+                    <input type="text" id="edit-icc-type" readonly style="background: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label>Загальна кількість (PACK)</label>
+                    <input type="number" id="edit-total-cartons" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Поточна кількість (зібрано)</label>
+                    <input type="number" id="edit-current-cartons" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Кодові букви (локація)</label>
+                    <input type="text" id="edit-location-code" style="text-transform: uppercase;">
+                </div>
+                <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                    <button class="btn btn-secondary" onclick="closeEditICCModal()" style="flex: 1;">Скасувати</button>
+                    <button class="btn btn-danger" onclick="deleteICC()" style="flex: 1;">Видалити</button>
+                    <button class="btn btn-success" onclick="saveICCChanges()" style="flex: 1;">Зберегти</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно деталей OCR -->
+    <div id="ocr-detail-modal" class="modal" style="display: none;" onclick="if(event.target===this)closeOcrDetail()">
+        <div class="modal-content fade-in" style="max-width: 700px; max-height: 90vh; display: flex; flex-direction: column; text-align: left; padding: 0; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid #eee; flex-shrink: 0;">
+                <h2 style="margin: 0; font-size: 1.2rem;">Деталі сканування</h2>
+                <button class="btn btn-danger" onclick="closeOcrDetail()" style="padding: 0.3rem 0.7rem; font-size: 1rem; line-height: 1;">✕</button>
+            </div>
+            <div id="ocr-detail-body" style="overflow-y: auto; padding: 1.5rem; flex: 1;"></div>
+        </div>
+    </div>
+
+    <!-- Toast повідомлення -->
+    <div id="toast-message" class="toast-message"></div>
+
+    <!-- Модальне вікно підтвердження (замість confirm) -->
+    <div id="confirm-modal" class="modal" style="display: none;">
+        <div class="modal-content fade-in" style="max-width: 450px;">
+            <h2 id="confirm-title" style="color: #dc3545; margin-bottom: 1rem;">⚠️ Підтвердження</h2>
+            <p id="confirm-message" style="font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem; color: #333;"></p>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()" style="flex: 1;">Скасувати</button>
+                <button class="btn btn-danger" onclick="confirmAction()" style="flex: 1;">Підтвердити</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='admin.js') }}"></script>
+    <script src="{{ url_for('static', filename='admin-mobile-helper.js') }}"></script>
+</body>
+</html>

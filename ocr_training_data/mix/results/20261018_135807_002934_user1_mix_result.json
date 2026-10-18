@@ -1,0 +1,19 @@
+{
+  "timestamp": "20261018_135807_002934",
+  "user_id": 1,
+  "carton_type": "mix",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "D980947 Made in China",
+    "inverted": "D980947 Made in China",
+    "contrast": "D980947 Made in China",
+    "binary": "98047 M ide in China"
+  },
+  "extracted_data": {
+    "cell": "D980947",
+    "qtyPack": null,
+    "prefix": null,
+    "zone": null
+  },
+  "image_path": "ocr_training_data/mix/images/20261018_135807_002934_user1_mix_original.jpg"
+}

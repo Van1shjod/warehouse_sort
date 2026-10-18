@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260928_073525_012451",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "Light CN C1475387 PackTD:C1475387260724240030 CNo.ICC1475387260724759 Fron:PL REFNo.:JD1278177 TO:PLROKB NO Betoh NaQ 6HG0369EU 18 4759 18 GS Made In Chits MYSELF PLROKB KGS 13 53X36X50CM",
+    "inverted": "ight C1475387 PackD:C1475357260728240030 ICNO.:IOC1475387260724759 REFNO.：JD1278177 60GO369HU 18 4759 A18 GS MadeInChite PLROKB KGS 13 53X36X50CM",
+    "contrast": "ight C1475387 PackID:C1475387260724240030 ICNo.:ICC1475387260724759 From:PL REFFNo.:JD1278177 TO:PLROKB NO. SAU Betob No.qnt 6HG0369EU 18 4759 18 MacenChits GS MYSELF PLROKB KGS 13 53X36X50CM 77",
+    "binary": "CN C1475387 Fa: 1:C147536726072403 Nc.:10014753320716 6HG0369EL 4759 18 PLROAB 53 X 36X50CM"
+  },
+  "extracted_data": {
+    "cell": "4759",
+    "qtyPack": 18,
+    "prefix": "PL",
+    "zone": "R"
+  },
+  "image_path": "ocr_training_data/single/images/20260928_073525_012451_user1_single_original.jpg"
+}

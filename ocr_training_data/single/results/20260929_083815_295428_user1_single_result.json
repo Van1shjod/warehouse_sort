@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260929_083815_295428",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "压放 爱心的惠顾 的惠顾 完好 防潮 C1264466 Pack ID:C1264466260801050079 ICNo.:ICC126446626080174(4) From:PL REFNo.:JD1279108 To:PLROKB NO. SKU Batch NO. QTY 6HG10470BK 25 请确认商品完好后签收！ 0174 PACK 感谢您的惠顾 25 Th- PCS MYSELF Made In China PLROKB ofIC 感谢您的惠顾 防潮防压 小心轻放 请确认商品完好后 认商品完好后签收 感谢您的惠顾 后签收 心轻放 防潮防压 心轻放 感谢您的惠顾",
+    "inverted": "压放 防轻 赶心的惠顾 完托 的惠 C1264466 Pack :C1264466260801050079 IC No.:ICC126446626080174(4) From: PL RFFNO.:JD1279108 TO: PLROKB SKU Bateh NOQTY 6HG10470BK 请确认商品完好后签收！ 0174 PAOK 感谢您的惠顾 25 TH- MYSELF Made In China PLROKB 感谢您的惠顾 精确认商品完 认商品完好后签收 感谢您的惠顾 子后签收 防潮防压 心经效 威谢您的惠顾",
+    "contrast": "到您的！ 压放 防轻 惠顾 防潮 吉签 CN C1264466 Pack ID:C1264466260801050079 ICNo.:ICC126446626080174(4) From: PL REFNo.:JD1279108 To:PLROKB NO. SKU Batch No. QTY 6HG10470BK 25 请确认商品完好后签收！ 0174 PACK 感谢您的惠顾 25 Th- PCS MYSELF Made In China PLROKB ofIC 感谢您的惠顾 防潮防压 小心轻放 请确认商品完好后 认商品完好后签收 好后签收！ 感谢您的惠顾 心轻放 防潮防压 小心轻放 感谢您的惠顾",
+    "binary": "压放 防轻 的惠顾 防潮 C1264466 Pack ID: C1264466260801050079 ICNo. :ICCI26446626080174(4) From: PL REF No. : JD1279108 TO: PLROKB NO. SKU Batch NO. QTY 6HG10470BK 25 0174 PACK 25 TH- PCS YSELF Made In China PLROKB or It 谢您的惠顾 商品完好居"
+  },
+  "extracted_data": {
+    "cell": "0174",
+    "qtyPack": 25,
+    "prefix": "TH",
+    "zone": "P"
+  },
+  "image_path": "ocr_training_data/single/images/20260929_083815_295428_user1_single_original.jpg"
+}

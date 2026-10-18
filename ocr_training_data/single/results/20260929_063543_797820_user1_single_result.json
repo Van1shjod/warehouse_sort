@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260929_063543_797820",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "C1008458 1：C10882600199012 Pateh MQnY 0168 10 XG- 20 Made in China PLROKB 50X40X36",
+    "inverted": "C008458 0168 10 A20 PIROAR 50X40X36",
+    "contrast": "C1008458 1：C4826050129012 Puom:PL TPLROKR BatehQY 0168 10 XG- 20 MSELE Made In China PLROKB 10 50X40X36",
+    "binary": "0168 10 20 XG- MSEL PI.NOKR"
+  },
+  "extracted_data": {
+    "cell": "0168",
+    "qtyPack": 10,
+    "prefix": "XG",
+    "zone": "M"
+  },
+  "image_path": "ocr_training_data/single/images/20260929_063543_797820_user1_single_original.jpg"
+}

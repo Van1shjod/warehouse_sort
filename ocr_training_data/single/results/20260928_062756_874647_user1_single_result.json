@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260928_062756_874647",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "CN C1008487 Pack ID:C1008487260724440036 ICNo.:ICC1008487260724162 From:PL REFNo.:JD1278084 To:PLROKB SKU NO. Batch No. QTY 6TY3206 16 4162 PACK 16 AE- PCS MYSELF Made In China PLROKB 20 BERNO:YC556 S:53X34X47CM",
+    "inverted": "C1008487 Pack ID:C1008487260724440036 ICNo.:ICC1008487260724162 From: PL REFNO.:JD1278084 TO: PLROKB Batca NO 6TY3206 16 4162 PACK .16 AE- MYSELF Made In Chioa PLROKB 20 BER NOYC556 S:53X34X47CM",
+    "contrast": "C1008487 Pack ID:C1008487260724440036 ICNo.:ICC1008487260724162 From: PL REFNo.:JD1278084 To:PLROKB Batch NO. SKU NO. QTY 6TY3206 16 4162 PACK 16 AE- MYSELF Made In China PLROKB 20 BERNO:YC556 S.53X34X47CM",
+    "binary": "CN C1008487 Pack 1D: C1008487260724440036 ICNo. :ICC1008487260724162 From: PL REF No. : JD1278084 To: PLROKB SKU Balch NO. No. QTY :1 6TY3206 16 4162 PACK 16 Ae- MYSELE Made In Chilla PLROKB 20"
+  },
+  "extracted_data": {
+    "cell": "4162",
+    "qtyPack": 16,
+    "prefix": "AE",
+    "zone": "P"
+  },
+  "image_path": "ocr_training_data/single/images/20260928_062756_874647_user1_single_original.jpg"
+}

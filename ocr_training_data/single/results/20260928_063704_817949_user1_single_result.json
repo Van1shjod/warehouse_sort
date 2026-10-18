@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260928_063704_817949",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "C1475387 Pack ID:C1475387260724320038 Fron: PL ICNo.:ICC1475387260724759 TO:PLROKB REF No.:JD1278177 Batch NO. QTY SKU NO. 18 6TY0694 4759 PACK 18 PCS Made In China MYSELF PLROKB",
+    "inverted": "C1475387 Pack ID: C1475387260724320038 FrOgPL ICNO.:1CC1475387260724759 TO:PLRORB REFNO.:JD1278177 Batch No SHU NO. 18 6TY0694 4759 PACR 18 MYSELF PLROKB",
+    "contrast": "C1475387 Pack ID:C1475387260724320038 From: PL ICNo.:ICC1475387260724759 TO:PLROKB REFNo.:JD1278177 QTY Batch No. SKU NO. 18 6TY0694 4759 PACK 18 PCS Made In China MYSELR PLROKB",
+    "binary": "C1475387 Pack [D: C1475387260724320038 From: PL ICNo. :ICC1475387260724759 To: PL.ROKB REF So. : JD1278177 QTY Batch No. SRU. NO. 18 6TY0694 4759 PACK 18 PCS Made_ In China MYSELF PLROKB"
+  },
+  "extracted_data": {
+    "cell": "4759",
+    "qtyPack": 18,
+    "prefix": "PL",
+    "zone": "I"
+  },
+  "image_path": "ocr_training_data/single/images/20260928_063704_817949_user1_single_original.jpg"
+}

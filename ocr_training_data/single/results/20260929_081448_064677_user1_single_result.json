@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260929_081448_064677",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "CN C1008458 Pack ID:C1008458260801100148 ICNo.:ICC1008458260801213 From: PL REFNo.:JD1279142 TO:PLROKB SKU NO. Batch.No....QTY. 6HG8652GY 1213 10 PACK 16 OH- PCS MYSELF Made In China PLROKB",
+    "inverted": "C1008458 Pack ID:C1008458260801100148 TC No.:ICC1008458260801213 From: PL REFNO,:JD1279142 TO&PLRORB SKU 6HG8652GY 16 1213 PACK A16 OH- MYSELF PLROKB",
+    "contrast": "CN C1008458 Pack ID:C1008458260801100148 ICNo.:ICC1008458260801213 From: PL REF No.:JD1279142 TO:PLROKB SKU NO. Batch No.QTY 6HG8652GY 1213 10 PACK 16 OH- PCS MYSELF Made In China PLROKB",
+    "binary": "CN C1008458 Pack ID: C1008458260801100148 ICNo.:ICC1008458260801213 From: PL To: PLROKB REF No. : JD1279142 SKU. No. Batch..NO....QTY.. 6HG8652GY 16 1213 10 PACK 16 Oh- PCS MYSELF Made In China PLROKB"
+  },
+  "extracted_data": {
+    "cell": "1213",
+    "qtyPack": 16,
+    "prefix": "OH",
+    "zone": "P"
+  },
+  "image_path": "ocr_training_data/single/images/20260929_081448_064677_user1_single_original.jpg"
+}

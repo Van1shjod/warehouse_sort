@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260929_081957_144026",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "CN C1008458 Pack ID:C1008458260801280036 ICNo.:ICC100845826080122(56) From:PL REF No.:JD1279053 TO:PLROKB NO. SKU Batch No. QTY 6HG6796WH 19 0122 PACK MQ- 19 PCS MYSELF PLROKB Made In Chiha 36",
+    "inverted": "C1008458 Pack 1D: C1003458260s01280036 IC No.:ICCI008458260S0122(56) Froms PL REFNO.:JD1273053 TO:PLROKB NO Batch NO. QTY 6HG6796WH 61 0122 PACK MQ- 19 PCS MYSELR PLROKB Made Im China 36",
+    "contrast": "C1008458 Pack ID:C1008458260801280036 ICNo.：ICC100845826080122（56) From:PL REFNo.:JD1279053 TO:PLROKB NO. SKU Batch NO. QTY 6HG6796WH 19 0122 PACK MQ- 19 PCS MYSELF PLROKB Made In China 36",
+    "binary": "C1008458 Pack [D: C1008458260801280036 IC No. :ICC100845826080122 (56) From: PL REF No. : JD1279053 TO: PLROKB NO. SKU Batch.No. QT 6HG6796WH 0122 PAK MQ- 19 PCS MYSELF Made In China PLROKB 36 o Ic"
+  },
+  "extracted_data": {
+    "cell": "0122",
+    "qtyPack": 1,
+    "prefix": "MQ",
+    "zone": "P"
+  },
+  "image_path": "ocr_training_data/single/images/20260929_081957_144026_user1_single_original.jpg"
+}

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Dashboard - Warehouse System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <h2>Warehouse System</h2>
+            <div class="nav-right">
+                <span class="username">{{ user['username'] }}</span>
+                {% if user['role'] == 'admin' %}
+                    <a href="/admin" class="btn btn-small">Адмін</a>
+                {% endif %}
+                <a href="/logout" class="btn btn-small btn-danger">Вихід</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Інформація про поточний сорт -->
+        <div id="current-sort-info" style="display: none; margin-top: 2rem; padding: 1.5rem; background: #fff3cd; border-radius: 12px; border: 2px solid #ffc107;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <p style="margin: 0; font-size: 0.9rem; color: #856404; font-weight: 500;">Поточний сорт:</p>
+                    <h2 id="current-sort-name" style="margin: 0.5rem 0 0 0; color: #856404; font-size: 2rem;"></h2>
+                    <p id="current-sort-details" style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #856404;"></p>
+                </div>
+                <button class="btn btn-warning" onclick="changeSortSelection()">🔄 Змінити сорт</button>
+            </div>
+        </div>
+
+        <!-- Вибір сорту -->
+        <div id="sort-selection" style="display: none; margin-top: 2rem;">
+            <div class="work-card fade-in">
+                <h2 style="text-align: center; margin-bottom: 1rem;">Виберіть сорт зони/рампи</h2>
+                <p style="text-align: center; color: #666; margin-bottom: 1.5rem;">Оберіть, з яким сортом ви будете працювати сьогодні</p>
+                <div id="sorts-list" style="display: grid; gap: 1rem;"></div>
+                <button class="btn btn-secondary" onclick="cancelSortSelection()" style="width: 100%; margin-top: 1rem;">Скасувати</button>
+            </div>
+        </div>
+
+        <!-- Головна кнопка (без статистики) -->
+        <div class="main-actions" style="margin-top: 3rem;">
+            <button class="btn btn-large btn-primary" onclick="checkContainerAndShowSortMenu()">SORT</button>
+        </div>
+
+        <!-- Меню вибору типу -->
+        <div id="sort-menu" class="modal">
+            <div class="modal-content fade-in">
+                <h2>Виберіть тип</h2>
+                <div class="type-buttons">
+                    <button class="btn btn-large btn-type" onclick="selectType('single')">Single</button>
+                    <button class="btn btn-large btn-type" onclick="selectType('mix')">Mix</button>
+                    <button class="btn btn-large btn-type" onclick="selectType('vevor')">Vevor</button>
+                </div>
+                <button class="btn btn-secondary" onclick="closeSortMenu()">Скасувати</button>
+            </div>
+        </div>
+
+        <!-- Робоча область -->
+        <div id="work-area" style="display: none;">
+            <div class="work-card fade-in">
+                <div class="work-header">
+                    <h2>Тип: <span id="current-type"></span></h2>
+                    <button class="btn btn-danger" onclick="closeWorkArea()">Завершити</button>
+                </div>
+
+                <!-- Новий єдиний інтерфейс для Single -->
+                <div id="single-input-section" style="display: none;">
+                    <!-- Кнопка камери зверху -->
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <button id="camera-scan-btn" class="btn btn-large btn-primary" onclick="openCameraScanner()">
+                            📷 Сканувати наклейку
+                        </button>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-group">
+                            <label>ICC Код (4 цифри)</label>
+                            <input type="text" id="icc-code-input" placeholder="Введіть 4 цифри" autocomplete="off" maxlength="4" pattern="[0-9]*" inputmode="numeric">
+                        </div>
+                        <div class="form-group">
+                            <label>Загальна кількість (PACK)</label>
+                            <input type="number" id="cartons-count-input" placeholder="Кількість картонів" min="1" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label>Кодові букви (локація)</label>
+                            <input type="text" id="location-code-input" placeholder="Наприклад: IZ-A" autocomplete="off" style="text-transform: uppercase;">
+                        </div>
+                        <button class="btn btn-large btn-success" onclick="submitSingleData()" style="width: 100%; margin-top: 0.5rem;">
+                            Продовжити ➜
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Інтерфейс для MIX -->
+                <div id="mix-input-section" style="display: none;">
+                    <!-- Кнопка камери зверху -->
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <button class="btn btn-large btn-primary" onclick="openCameraScannerMix()">
+                            📷 Сканувати MIX наклейку
+                        </button>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-group">
+                            <label>ICC Код MIX (наприклад: D980989)</label>
+                            <input type="text" id="mix-icc-code-input" placeholder="Введіть код з наклейки" autocomplete="off" maxlength="10" style="text-transform: uppercase;">
+                        </div>
+                        <button class="btn btn-large btn-success" onclick="submitMixData()" style="width: 100%; margin-top: 0.5rem;">
+                            Додати MIX картон ➜
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button class="btn btn-secondary" onclick="startNewMixPallet()" style="width: 100%;">
+                            🆕 Нова палета
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно "Це новий товар?" -->
+    <div id="new-item-modal" class="modal" style="display: none;">
+        <div class="modal-content fade-in">
+            <h2>⚠️ Увага</h2>
+            <p style="font-size: 1.1rem; margin: 1.5rem 0;">
+                Товар з таким кодом вже існує і завершений.<br>
+                <strong>Це новий товар?</strong>
+            </p>
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button class="btn btn-large btn-secondary" onclick="cancelNewItem()" style="flex: 1;">Ні</button>
+                <button class="btn btn-large btn-primary" onclick="confirmNewItem()" style="flex: 1;">Так, новий товар</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно підтвердження (після "Продовжити") -->
+    <div id="confirmation-modal" class="modal" style="display: none;">
+        <div class="modal-content fade-in">
+            <h2>Скільки є зараз?</h2>
+
+            <!-- Прогрес якщо товар вже існує -->
+            <div id="progress-info-modal2" style="display: none; background: #e3f2fd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #2196F3;">
+                <p style="margin: 0; font-size: 1rem; color: #0d47a1; font-weight: 600;">
+                    📊 Прогрес: <span id="progress-current-modal2">0</span> / <span id="progress-total-modal2">0</span> картонів
+                </p>
+                <div class="progress-bar" style="margin-top: 0.5rem; height: 20px;">
+                    <div id="progress-fill-modal2" class="progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div class="form-card" style="margin-top: 1.5rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Кількість (шт)</label>
+                    <input type="number" id="current-quantity-input" placeholder="Введіть кількість" min="1" autocomplete="off">
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                <button class="btn btn-secondary" onclick="cancelConfirmation()" style="flex: 1;">Скасувати</button>
+                <button class="btn btn-large btn-success" onclick="proceedToLocation()" style="flex: 2;">Далі ➜</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно локації (третє вікно) -->
+    <div id="location-modal" class="modal" style="display: none;">
+        <div class="modal-content fade-in">
+            <h2>Локація (палета)</h2>
+
+            <!-- Прогрес -->
+            <div id="progress-info-modal3" style="display: none; background: #e3f2fd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #2196F3;">
+                <p style="margin: 0; font-size: 1rem; color: #0d47a1; font-weight: 600;">
+                    📊 Прогрес: <span id="progress-current-modal3">0</span> / <span id="progress-total-modal3">0</span> картонів
+                </p>
+                <div class="progress-bar" style="margin-top: 0.5rem; height: 20px;">
+                    <div id="progress-fill-modal3" class="progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Показати існуючу палету якщо є -->
+            <div id="existing-pallet-info" style="display: none; background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #ffc107;">
+                <p style="margin: 0; font-size: 1rem; color: #856404;">
+                    📍 Існуюча палета: <strong id="existing-pallet-display" style="font-size: 1.5rem;"></strong>
+                </p>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #856404;">
+                    Підтвердіть сканером або натисніть Enter
+                </p>
+                <button class="btn btn-danger" onclick="closePalletAndNew()" style="margin-top: 0.75rem; width: 100%;">
+                    Палета повна — вказати нову
+                </button>
+            </div>
+
+            <div class="form-card" style="margin-top: 1.5rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Номер палети</label>
+                    <input type="text" id="pallet-location-input" placeholder="Введіть або відскануйте" autocomplete="off" style="text-transform: uppercase;">
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                <button class="btn btn-secondary" onclick="backToQuantity()" style="flex: 1;">Назад</button>
+                <button class="btn btn-large btn-success" onclick="confirmAndSubmit()" style="flex: 2;">Підтвердити ✓</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно камери -->
+    <div id="camera-modal" class="modal" style="display: none;">
+        <div class="modal-content camera-modal-content">
+            <div class="camera-header">
+                <h2>Сканування наклейки</h2>
+                <button class="btn btn-danger" onclick="closeCameraScanner()">✕</button>
+            </div>
+            <div class="camera-container-wrapper">
+                <div class="camera-container">
+                    <video id="camera-video" autoplay playsinline></video>
+                    <!-- Оверлей з підказкою -->
+                    <div class="camera-overlay">
+                        <div class="camera-guide">
+                            <div class="guide-corner tl"></div>
+                            <div class="guide-corner tr"></div>
+                            <div class="guide-corner bl"></div>
+                            <div class="guide-corner br"></div>
+                            <div class="guide-text">
+                                Розташуйте наклейку в рамці
+                            </div>
+                        </div>
+                    </div>
+                    <canvas id="camera-canvas" style="display: none;"></canvas>
+                </div>
+            </div>
+            <div class="camera-controls">
+                <button id="flash-toggle-btn" class="btn btn-medium btn-secondary" onclick="toggleFlash()">🔆 Спалах</button>
+                <button class="btn btn-large btn-primary" onclick="capturePhoto()">📸 Зробити фото</button>
+                <div id="scan-status" class="scan-status"></div>
+            </div>
+            <div id="scan-result" class="scan-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Toast повідомлення -->
+    <div id="toast-message" class="toast-message"></div>
+
+    <script>
+        const userId = {{ user['id'] }};
+        const userRole = "{{ user['role'] }}";
+    </script>
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body>
+</html>

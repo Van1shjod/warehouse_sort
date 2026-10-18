@@ -1,0 +1,16 @@
+{
+  "timestamp": "20260928_134302_500729",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": false,
+  "raw_ocr_results": {
+    "contrast": "80531"
+  },
+  "extracted_data": {
+    "cell": null,
+    "qtyPack": null,
+    "prefix": null,
+    "zone": null
+  },
+  "image_path": "ocr_training_data/single/images/20260928_134302_500729_user1_single_original.jpg"
+}

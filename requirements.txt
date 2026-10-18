@@ -1,0 +1,6 @@
+Flask==3.0.0
+Werkzeug==3.0.1
+rapidocr-onnxruntime==1.2.3
+opencv-python==5.0.0.93
+numpy==2.5.3
+Pillow==12.3.0

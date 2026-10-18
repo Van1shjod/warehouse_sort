@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260929_113918_573004",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "CN C1008457 Pack ID:C1008457260722170029 IC No.:ICC100845726072299(13) From: CN REF No.:JD30000289 To:PLROKB NO. SKU Batch NO. QTY 8CR3055 16 2299 PACK 16 IF. PCS MYSELF Made in China PLROKB ofIC 2026-07-22 欧盟海运-波兰专线 7/13 D30000289 NPE2607223893-7",
+    "inverted": "Pack ID: C1008457260722170029 ICNo.:ICC100845726072299(13) From: CN REFNO.:JD30000289 TO: PLROKB SKU Bateh NoOTY 8CR3055 16 2299 PACK 16 MYSELF Made in Chiaa PLROKB ofIC 2026-07-22 欧盟海运-波兰专线 7/13 D30000289 NPE2607223893-7",
+    "contrast": "CN C1008457 Pack ID:C1008457260722170029 ICNo.:ICC100845726072299(13) From: CN REF No.:JD30000289 TO: PLROKB NO. SKU Batch NO. OTY 8CR3055 16 2299 PACK 16 IF- POS MYSELF Made in China PLROKB ofIC 2026-07-22 欧盟海运-波兰专线 7/13 D30000289 NPE2607223893-7",
+    "binary": "CN C1008457 Pack ID: C1008457260722170029 ICNo. : ICC100845726072299(13) From: CN REF No.:JD30000289 To: PLROKB No. SKU Batch NO. QTY 8CR3055 16 2299 PACK 16 If. PCS MYSELF Made in China 4. PLROKR of Ic 2026-07-22 欧盟海运-波兰专线 7/13 D30000289 NPE2607223893-7 UY13"
+  },
+  "extracted_data": {
+    "cell": "2299",
+    "qtyPack": 16,
+    "prefix": "IF",
+    "zone": "P"
+  },
+  "image_path": "ocr_training_data/single/images/20260929_113918_573004_user1_single_original.jpg"
+}

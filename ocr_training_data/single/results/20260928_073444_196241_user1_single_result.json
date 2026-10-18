@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260928_073444_196241",
+  "user_id": 1,
+  "carton_type": "single",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "C1475387 CN Pack ID:C1475387260724450029 ICNo.:ICC1475387260724759 From: PL REFNo.:JD1278177 TO:PLROKB SKU No. Batch.No....QTY 6HG0369EU 18 4759 PACK 18 PCS MYSELF Made In China PLROKB",
+    "inverted": "C1475387 CN Psok ID：C1475387260724450029 IC No.:ICC14753872607241759 From: PL REFNO.:JD1278177 TO8PLROKB Batea No. SRU NO QTY 6HG0369EU 18 4759 PACK A18 MYSELR Made PLROKB",
+    "contrast": "C1475387 CN Pack ID:C1475387260724450029 ICNo.:ICC1475387260724759 From:PL REFNo.:JD1278177 To:PLROKB SKU Batch No... NO. QTY 6HG0369EU 18 4759 PACK 18 PCS MYSELR Made In China PLROKB oric",
+    "binary": "C1475387 CN PackID:C1475387260724450029 ICNo.:ICC1475387260724759 From: PL REF No. : JD1278177 To: PLROKB SKU. NO. Batch..NO....QTY. 6HG0369EU 18 4759 PACK 18 PCS MYSELP Made In Chiha PLROKB of ic"
+  },
+  "extracted_data": {
+    "cell": "4759",
+    "qtyPack": 18,
+    "prefix": "PL",
+    "zone": "R"
+  },
+  "image_path": "ocr_training_data/single/images/20260928_073444_196241_user1_single_original.jpg"
+}

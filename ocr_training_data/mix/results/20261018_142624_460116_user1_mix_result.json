@@ -1,0 +1,19 @@
+{
+  "timestamp": "20261018_142624_460116",
+  "user_id": 1,
+  "carton_type": "mix",
+  "success": true,
+  "raw_ocr_results": {
+    "original": "D980989 Made in China",
+    "inverted": "D980289 Miode in China",
+    "contrast": "D980989 Made in China",
+    "binary": "68.0850 Minde in China"
+  },
+  "extracted_data": {
+    "cell": "D980989",
+    "qtyPack": null,
+    "prefix": null,
+    "zone": null
+  },
+  "image_path": "ocr_training_data/mix/images/20261018_142624_460116_user1_mix_original.jpg"
+}

@@ -46,3 +46,9 @@ Thumbs.db
 # Env files
 .env
 .env.local
+
+# Generated warehouse data and runtime logs
+*.log
+ocr_training_data/
+backup_initial/
+.reset-staging/

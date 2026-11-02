@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pre-sort — Warehouse System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='presort.css') }}">
+    {% include '_theme.html' %}
+</head>
+<body>
+{% include '_back_navigation.html' %}
+<nav class="navbar"><div class="nav-content">
+    <h2>PRE-SORT</h2><div class="nav-right"><span class="username">{{ user.username }}</span>
+    <a href="/dashboard" class="btn btn-small">На головну</a></div>
+</div></nav>
+<main class="container presort">
+    <header><h1>Pre-sort</h1></header>
+    <section class="presort-card">
+        <label for="container">Створений Pre-sort</label>
+        <select id="container"><option value="">Оберіть Pre-sort</option></select>
+        <button id="refresh" class="btn btn-secondary">Оновити дані</button>
+        {% if user.role == 'admin' %}
+        <a href="/admin?tab=create-sort" class="btn btn-primary">Створити Pre-sort в адмінпанелі</a>
+        {% endif %}
+        <p id="job-details"></p>
+        {% if user.role == 'admin' %}
+        <div class="presort-row">
+            <button id="close-job" class="btn btn-warning" hidden>Закрити Pre-sort</button>
+            <button id="convert-job" class="btn btn-success" hidden>Перевести в SORT</button>
+        </div>
+        {% endif %}
+    </section>
+    <p id="message" role="status" aria-live="polite"></p>
+    <div id="workspace" hidden>
+        <section class="presort-card">
+            <div class="presort-row"><h2 id="pallet-title">Палету не відкрито</h2>
+                <button id="open" class="btn btn-primary">Почати нову палету</button>
+                <button id="close" class="btn btn-danger" hidden>Палета повна — закрити</button>
+            </div>
+            <p id="pallet-count"></p>
+            <form id="scan-form">
+                <fieldset id="scan-fields" disabled>
+                    <label for="type">Тип наклейки</label>
+                    <select id="type"><option value="single">Single</option><option value="mix">Mix</option><option value="vevor">Vevor</option></select>
+                    <div id="presort-vevor-notice" hidden style="padding:2rem;text-align:center;"><h2>🚧 У розробці</h2><p>Робота з картонами Vevor буде доступна пізніше.</p></div>
+                    <div id="presort-label-controls">
+                    <button id="camera-scan-btn" type="button" class="btn btn-large btn-primary presort-camera">📷 Сканувати наклейку</button>
+                    <div class="presort-fields">
+                        <div><label for="code">ICC код</label><input id="code" autocomplete="off" required maxlength="20"></div>
+                        <div id="location-field"><label for="location">Кодові букви</label><input id="location" placeholder="JP-A" maxlength="4" autocomplete="off" required></div>
+                        <div id="pack-field"><label for="pack">PACK на наклейці</label><input id="pack" type="number" min="1" max="999999999" required></div>
+                    </div>
+                    <button class="btn btn-success" type="submit">Додати</button>
+                    </div>
+                </fieldset>
+            </form>
+            <button id="retry" class="btn btn-warning" hidden>Повторити збереження цього картону</button>
+            <button id="undo" class="btn btn-secondary" hidden>Скасувати останній картон</button>
+            <p id="last-added"></p>
+        </section>
+        <p id="totals"></p>
+        <section class="presort-card"><h2>Усі палети Pre-sort</h2><div id="pallets"></div></section>
+    </div>
+</main>
+<div id="camera-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="camera-title">
+    <div class="modal-content camera-modal-content">
+        <div class="camera-header">
+            <h2 id="camera-title">Сканування наклейки</h2>
+            <button id="camera-close" class="btn btn-danger" aria-label="Закрити камеру">✕</button>
+        </div>
+        <div class="camera-container-wrapper">
+            <div class="camera-container">
+                <video id="camera-video" autoplay playsinline muted></video>
+                <div class="camera-overlay">
+                    <div class="camera-guide">
+                        <div class="guide-corner tl"></div><div class="guide-corner tr"></div>
+                        <div class="guide-corner bl"></div><div class="guide-corner br"></div>
+                        <div class="guide-text">Розташуйте наклейку в рамці</div>
+                    </div>
+                </div>
+                <canvas id="camera-canvas" style="display: none;"></canvas>
+            </div>
+        </div>
+        <div class="camera-controls">
+            <button id="flash-toggle-btn" class="btn btn-medium btn-secondary" disabled>🔆 Спалах</button>
+            <button id="camera-capture" class="btn btn-large btn-primary" disabled>📸 Зробити фото</button>
+            <div id="scan-status" class="scan-status" role="status" aria-live="polite"></div>
+        </div>
+        <div id="scan-result" class="scan-result" style="display: none;"></div>
+    </div>
+</div>
+<div id="carton-added-notice" class="carton-added-notice" role="status" aria-live="polite" hidden>✓ Картон додано</div>
+<script src="{{ url_for('static', filename='presort.js') }}"></script>
+</body>
+</html>

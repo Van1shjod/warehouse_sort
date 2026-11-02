@@ -1,3 +1,9 @@
+// OCR transitions must not summon the phone keyboard. Manual steps retain focus.
+let ocrFocusDepth = 0;
+function focusWorkInput(input) {
+    if (!ocrFocusDepth) input.focus();
+}
+
 let currentType = null;
 let currentICCCode = null;
 let currentICCData = null;
@@ -6,6 +12,43 @@ let pendingCartonsCount = null;
 let scannedData = null; // Зберігаємо дані після сканування
 let currentContainer = null; // Поточний обраний контейнер
 let currentSort = null; // Поточний обраний сорт
+let pendingSortSave = null;
+let sortSaveInFlight = false;
+let sortCheckGeneration = 0;
+const sortPendingKey = 'warehouse-sort-pending-' + (typeof userId === 'undefined' ? 'unknown' : userId);
+try {
+    const saved = JSON.parse(sessionStorage.getItem(sortPendingKey) || 'null');
+    if (saved?.request_id && saved.sort_id && saved.icc_code) pendingSortSave = saved;
+} catch (_) {}
+window.hasPendingSortSave = () => !!pendingSortSave || sortSaveInFlight;
+
+function syncSortSaveControls() {
+    const locked = !!pendingSortSave || sortSaveInFlight;
+    document.querySelectorAll('#work-area input, #work-area button, #location-modal input, #location-modal button, #confirmation-modal input, #confirmation-modal button').forEach(node => { node.disabled = locked; });
+    const notice = document.getElementById('sort-pending-notice');
+    if (notice) notice.hidden = !pendingSortSave;
+    const retry = document.getElementById('sort-retry-btn');
+    if (retry) retry.disabled = sortSaveInFlight;
+    const text = document.getElementById('sort-pending-text');
+    if (text && pendingSortSave) text.textContent = `${sortSaveInFlight ? 'Зберігаю' : 'Збереження не підтверджене'}: ${pendingSortSave.icc_code}, ${pendingSortSave.cartons_count} картонів → палета ${pendingSortSave.pallet_number}. Повторення цієї операції не додає дубль.`;
+}
+
+function sortActionBlocked() {
+    if (!pendingSortSave && !sortSaveInFlight) return false;
+    syncSortSaveControls();
+    showToast('Спочатку повторіть непідтверджене збереження цього картону.', 'warning', 3500);
+    return true;
+}
+
+function clearPendingSortSave() {
+    pendingSortSave = null;
+    try { sessionStorage.removeItem(sortPendingKey); } catch (_) {}
+}
+
+function allowedSortTypes() {
+    const types = String(currentSort?.type || '').split(',').map(type => type.trim().toLowerCase()).filter(type => ['single','mix','vevor'].includes(type));
+    return types.length ? types : ['single','mix','vevor'];
+}
 
 // Функція для показу toast повідомлень (замість alert)
 function showToast(message, type = 'info', duration = 2500) {
@@ -19,7 +62,8 @@ function showToast(message, type = 'info', duration = 2500) {
     toast.classList.add('show');
 
     // Встановити текст
-    toast.innerHTML = message.replace(/\n/g, '<br>');
+    toast.textContent = String(message).replace(/<br\s*\/?>/gi, '\n').replace(/<\/?strong>/gi, '');
+    toast.style.whiteSpace = 'pre-line';
 
     // Автоматично сховати через duration мілісекунд
     setTimeout(() => {
@@ -33,9 +77,10 @@ async function loadStats() {
         const response = await fetch('/api/stats');
         const data = await response.json();
 
-        document.getElementById('single-pallets').textContent = data.single_pallets;
-        document.getElementById('mix-pallets').textContent = data.mix_pallets;
-        document.getElementById('vevor-pallets').textContent = data.vevor_pallets;
+        for (const [id, field] of [['single-pallets','single_pallets'],['mix-pallets','mix_pallets'],['vevor-pallets','vevor_pallets']]) {
+            const counter = document.getElementById(id);
+            if (counter) counter.textContent = data[field];
+        }
     } catch (error) {
         console.error('Помилка завантаження статистики:', error);
     }
@@ -200,8 +245,9 @@ async function loadCurrentSort() {
             const response = await fetch(`/api/sorts/${savedSortId}`);
             if (response.ok) {
                 const sort = await response.json();
-                if (sort.status === 'active') {
+                if (sort.status === 'active' && sort.mode !== 'presort') {
                     currentSort = sort;
+                    window.loadPresortSource?.(sort);
                     showCurrentSortInfo(sort);
                 } else {
                     // Сорт неактивний - видалити з localStorage
@@ -231,7 +277,9 @@ function showCurrentSortInfo(sort) {
     const sortName = document.getElementById('current-sort-name');
     const sortDetails = document.getElementById('current-sort-details');
 
-    sortName.textContent = sort.name;
+    sortName.textContent = `#${sort.id} · ${sort.name}`;
+    const workSortName = document.getElementById('work-sort-name');
+    if (workSortName) workSortName.textContent = sort.name;
 
     const typeLabels = {
         'zone': '🏢 Зона',
@@ -239,7 +287,8 @@ function showCurrentSortInfo(sort) {
         'container': '📦 Контейнер',
         'other': '📋 Інше'
     };
-    const typeLabel = typeLabels[sort.type] || sort.type;
+    const cartonLabels = {single:'Single',mix:'Mix',vevor:'Vevor'};
+    const typeLabel = String(sort.type).split(',').map(type => cartonLabels[type] || typeLabels[type] || type).join(' / ');
 
     const unloadDate = new Date(sort.unload_date).toLocaleDateString('uk-UA', {
         day: '2-digit',
@@ -258,14 +307,18 @@ function hideCurrentSortInfo() {
 
 // Перевірити сорт і показати меню Sort
 async function checkContainerAndShowSortMenu() {
+    if (sortActionBlocked()) return;
     // Завжди показувати вибір сорту після натискання SORT
     await showSortSelection();
 }
 
 // Показати вибір сорту
 async function showSortSelection() {
+    if (sortActionBlocked()) return;
+    sortCheckGeneration++;
     try {
-        const response = await fetch('/api/sorts');
+        const response = await fetch('/api/sorts?mode=sort');
+        if (!response.ok) throw new Error('Не вдалося завантажити сорти');
         const sorts = await response.json();
 
         if (sorts.length === 0) {
@@ -300,12 +353,27 @@ async function showSortSelection() {
                 progressText = `<div style="font-size: 0.9rem; opacity: 0.9;">Прогрес: ${sort.completed_count} / ${sort.icc_count} ICC кодів завершено</div>`;
             }
 
-            btn.innerHTML = `
-                <div style="font-size: 1.3rem; font-weight: bold;">${sort.name}</div>
-                <div style="font-size: 1rem; opacity: 0.9;">${typeLabel} • ${unloadDate}</div>
-                ${sort.description ? `<div style="font-size: 0.9rem; opacity: 0.8;">${sort.description}</div>` : ''}
-                ${progressText}
-            `;
+            const title = document.createElement('div');
+            title.style.cssText = 'font-size: 1.3rem; font-weight: bold;';
+            title.dataset.noTranslate=''; title.textContent = `#${sort.id} · ${sort.mode === 'presort' ? 'PRE-SORT' : 'SORT'} · ${sort.name}`;
+            const details = document.createElement('div');
+            details.textContent = `${typeLabel} • ${unloadDate}`;
+            btn.append(title, details);
+            if (sort.has_presort_source) {
+                const source = document.createElement('div');
+                source.textContent = 'Є дані Pre-sort: пошук початкових палет';
+                btn.append(source);
+            }
+            if (sort.description) {
+                const notes = document.createElement('div');
+                notes.textContent = sort.description; notes.dataset.noTranslate='';
+                btn.append(notes);
+            }
+            if (sort.mode !== 'presort' && sort.icc_count > 0) {
+                const progress = document.createElement('div');
+                progress.textContent = `Прогрес: ${sort.completed_count} / ${sort.icc_count} ICC кодів завершено`;
+                btn.append(progress);
+            }
             btn.onclick = () => selectSort(sort.id);
             sortsList.appendChild(btn);
         });
@@ -319,16 +387,23 @@ async function showSortSelection() {
 
 // Вибрати сорт
 async function selectSort(sortId) {
+    if (sortActionBlocked()) return;
+    sortCheckGeneration++;
     try {
         const response = await fetch(`/api/sorts/${sortId}`);
         const data = await response.json();
 
         if (response.ok) {
+            if (data.status !== 'active') { showToast('Цей сорт уже закритий або призупинений. Оберіть інший.', 'warning'); return; }
+            if (data.mode === 'presort') {
+                window.location.href = `/presort?sort_id=${data.id}`;
+                return;
+            }
             currentSort = data;
+            window.loadPresortSource?.(data);
             localStorage.setItem('currentSortId', sortId);
             showCurrentSortInfo(data);
             document.getElementById('sort-selection').style.display = 'none';
-            showToast('Сорт обрано: ' + data.name, 'success');
 
             // Одразу показати меню Sort (без вибору контейнера)
             showSortMenu();
@@ -348,16 +423,24 @@ function cancelSortSelection() {
 
 // Змінити вибір сорту
 async function changeSortSelection() {
+    if (sortActionBlocked()) return;
     if (confirm('Ви впевнені, що хочете змінити сорт? Поточна робота буде збережена.')) {
         localStorage.removeItem('currentSortId');
         currentSort = null;
         hideCurrentSortInfo();
+        window.loadPresortSource?.(null);
         await showSortSelection();
     }
 }
 
 // Показати меню Sort
 function showSortMenu() {
+    if (sortActionBlocked()) return;
+    sortCheckGeneration++;
+    for (const type of ['single','mix','vevor']) {
+        const button = document.getElementById(`sort-type-${type}-btn`);
+        if (button) { button.hidden = !allowedSortTypes().includes(type); button.disabled = button.hidden; }
+    }
     document.getElementById('sort-menu').style.display = 'flex';
 }
 
@@ -368,6 +451,10 @@ function closeSortMenu() {
 
 // Вибрати тип
 function selectType(type) {
+    if (sortActionBlocked()) return;
+    if (!currentSort || !allowedSortTypes().includes(type)) {
+        showToast('Оберіть дозволений тип у поточному сорті.', 'warning'); return;
+    }
     currentType = type;
     document.getElementById('current-type').textContent = type.toUpperCase();
     closeSortMenu();
@@ -375,21 +462,19 @@ function selectType(type) {
     resetWorkArea();
 
     // Показуємо відповідну секцію для кожного типу
-    if (type === 'single') {
+    if (type === 'single' || type === 'vevor') {
         document.getElementById('single-input-section').style.display = 'block';
-        setTimeout(() => {
-            document.getElementById('icc-code-input').focus();
-        }, 100);
+        focusWorkInput(document.getElementById('icc-code-input'));
     } else if (type === 'mix') {
         document.getElementById('mix-input-section').style.display = 'block';
-        setTimeout(() => {
-            document.getElementById('mix-icc-code-input').focus();
-        }, 100);
+        focusWorkInput(document.getElementById('mix-icc-code-input'));
     }
 }
 
 // Закрити робочу область
 function closeWorkArea() {
+    if (sortActionBlocked()) return;
+    sortCheckGeneration++;
     document.getElementById('work-area').style.display = 'none';
     currentType = null;
     currentICCCode = null;
@@ -402,6 +487,7 @@ function closeWorkArea() {
 
 // Скинути робочу область
 function resetWorkArea() {
+    sortCheckGeneration++;
     // Сховати обидві секції
     document.getElementById('single-input-section').style.display = 'none';
     document.getElementById('mix-input-section').style.display = 'none';
@@ -413,6 +499,7 @@ function resetWorkArea() {
 
     // Очистити поля MIX
     document.getElementById('mix-icc-code-input').value = '';
+    window.refreshPresortMatches?.();
 
     // Скинути змінні
     currentICCCode = null;
@@ -424,26 +511,27 @@ function resetWorkArea() {
 
 // Функція для відправки даних після натискання "Продовжити"
 async function submitSingleData() {
+    if (sortActionBlocked()) return;
     const iccCode = document.getElementById('icc-code-input').value.trim();
     const totalCartons = parseInt(document.getElementById('cartons-count-input').value);
     const locationCode = document.getElementById('location-code-input').value.trim().toUpperCase();
 
     // Валідація
-    if (!iccCode || iccCode.length !== 4) {
+    if (!/^\d{4}$/.test(iccCode)) {
         showToast('Введіть 4 цифри коду!', 'error');
-        document.getElementById('icc-code-input').focus();
+        focusWorkInput(document.getElementById('icc-code-input'));
         return;
     }
 
-    if (!totalCartons || totalCartons < 1) {
+    if (!Number.isInteger(Number(document.getElementById('cartons-count-input').value)) || !totalCartons || totalCartons < 1) {
         showToast('Введіть загальну кількість (PACK)!', 'error');
-        document.getElementById('cartons-count-input').focus();
+        focusWorkInput(document.getElementById('cartons-count-input'));
         return;
     }
 
-    if (!locationCode) {
+    if (!/^[A-Z]{2}-[A-Z]$/.test(locationCode)) {
         showToast('Введіть кодові букви (наприклад: IZ-A)!', 'error');
-        document.getElementById('location-code-input').focus();
+        focusWorkInput(document.getElementById('location-code-input'));
         return;
     }
 
@@ -453,13 +541,17 @@ async function submitSingleData() {
         totalCartons: totalCartons,
         locationCode: locationCode
     };
+    const checkGeneration = ++sortCheckGeneration;
+    const checkedSortId = currentSort?.id;
+    const checkedType = currentType;
 
     // Перевіряємо чи існує ICC код з такими ж параметрами
     try {
-        const checkResponse = await fetch('/api/icc/check', {
+        const checkResponse = await fetch('/api/sort/check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                sort_id: currentSort?.id,
                 icc_code: iccCode,
                 type: currentType,
                 total_cartons: totalCartons,
@@ -468,9 +560,14 @@ async function submitSingleData() {
         });
 
         const checkData = await checkResponse.json();
+        if (checkGeneration !== sortCheckGeneration || checkedSortId !== currentSort?.id || checkedType !== currentType) return;
+        if (!checkResponse.ok) { showToast(checkData.error || 'Не вдалося перевірити товар', 'error'); return; }
 
         // Якщо ICC завершений - питаємо чи це новий товар
         if (checkData.status === 'completed') {
+            scannedData.existingData = checkData.icc_data;
+            scannedData.existingPallet = checkData.open_pallet?.pallet_number || null;
+            scannedData.existingPalletId = checkData.open_pallet?.id || null;
             showNewItemModal();
             return;
         }
@@ -481,6 +578,7 @@ async function submitSingleData() {
             scannedData.isExisting = true;
             if (checkData.open_pallet) {
                 scannedData.existingPallet = checkData.open_pallet.pallet_number;
+                scannedData.existingPalletId = checkData.open_pallet.id;
             }
         } else {
             scannedData.isExisting = false;
@@ -490,6 +588,7 @@ async function submitSingleData() {
         showConfirmationModal();
 
     } catch (error) {
+        if (checkGeneration !== sortCheckGeneration) return;
         console.error('Помилка перевірки ICC:', error);
         showToast('Помилка з\'єднання з сервером', 'error');
     }
@@ -497,7 +596,30 @@ async function submitSingleData() {
 
 // Показати вікно "Це новий товар?"
 function showNewItemModal() {
+    const previous = document.getElementById('completed-pallet-row');
+    if (previous) previous.hidden = !scannedData?.existingPalletId;
+    const label = document.getElementById('completed-pallet-number');
+    if (label) label.textContent = scannedData?.existingPallet || '';
     document.getElementById('new-item-modal').style.display = 'flex';
+}
+
+async function closeCompletedPallet() {
+    if (sortActionBlocked() || !scannedData?.existingPalletId) return;
+    const completed = scannedData;
+    const button = document.getElementById('close-completed-pallet');
+    if (button) button.disabled = true;
+    try {
+        const response = await fetch('/api/sort/pallet/close', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({sort_id:currentSort?.id,icc_id:completed.existingData?.id,pallet_id:completed.existingPalletId})
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Не вдалося закрити палету');
+        completed.existingPalletId = null; completed.existingPallet = null;
+        if (scannedData === completed) document.getElementById('completed-pallet-row').hidden = true;
+        showToast('Попередню палету закрито. Дані збережені.', 'success');
+    } catch (error) { showToast(error.message, 'error'); }
+    finally { if (button) button.disabled = false; }
 }
 
 // Скасувати (не новий товар)
@@ -506,19 +628,23 @@ function cancelNewItem() {
     // Повернутись до початку
     resetWorkArea();
     document.getElementById('single-input-section').style.display = 'block';
-    document.getElementById('icc-code-input').focus();
+    focusWorkInput(document.getElementById('icc-code-input'));
 }
 
 // Підтвердити новий товар
 function confirmNewItem() {
     document.getElementById('new-item-modal').style.display = 'none';
     scannedData.isNewItem = true;
+    scannedData.isExisting = false;
+    scannedData.existingPallet = null;
+    scannedData.existingPalletId = null;
     // Показати вікно підтвердження
     showConfirmationModal();
 }
 
 // Показати вікно підтвердження (друге вікно - кількість)
 function showConfirmationModal() {
+    window.showPresortStepMatches?.(scannedData, currentType);
     const modal = document.getElementById('confirmation-modal');
     const quantityInput = document.getElementById('current-quantity-input');
     const progressInfo = document.getElementById('progress-info-modal2');
@@ -534,7 +660,7 @@ function showConfirmationModal() {
     if (currentType === 'mix' && scannedData && scannedData.iccCode) {
         modalTitle.textContent = `Код: ${scannedData.iccCode}`;
     } else {
-        modalTitle.textContent = 'Скільки є зараз?';
+        modalTitle.textContent = 'Скільки картонів додаємо зараз?';
     }
 
     // Якщо товар вже існує - показати прогрес
@@ -558,17 +684,17 @@ function showConfirmationModal() {
     }
 
     modal.style.display = 'flex';
-    setTimeout(() => quantityInput.focus(), 100);
+    focusWorkInput(quantityInput);
 }
 
 // Перейти до третього вікна (локація)
 function proceedToLocation() {
-    const currentQuantity = parseInt(document.getElementById('current-quantity-input').value);
+    const currentQuantity = Number(document.getElementById('current-quantity-input').value);
 
     // Валідація
-    if (!currentQuantity || currentQuantity < 1) {
-        showToast('Введіть скільки є зараз!', 'error');
-        document.getElementById('current-quantity-input').focus();
+    if (!Number.isInteger(currentQuantity) || currentQuantity < 1) {
+        showToast('Введіть додатну цілу кількість картонів!', 'error');
+        focusWorkInput(document.getElementById('current-quantity-input'));
         return;
     }
 
@@ -582,6 +708,7 @@ function proceedToLocation() {
 
 // Показати третє вікно (локація)
 function showLocationModal() {
+    window.showPresortStepMatches?.(scannedData, currentType);
     const modal = document.getElementById('location-modal');
     const locationInput = document.getElementById('pallet-location-input');
     const existingPalletInfo = document.getElementById('existing-pallet-info');
@@ -625,23 +752,24 @@ function showLocationModal() {
     }
 
     modal.style.display = 'flex';
-    setTimeout(() => locationInput.focus(), 100);
+    focusWorkInput(locationInput);
 }
 
 // Повернутись до другого вікна (кількість)
 function backToQuantity() {
     document.getElementById('location-modal').style.display = 'none';
     document.getElementById('confirmation-modal').style.display = 'flex';
-    setTimeout(() => document.getElementById('current-quantity-input').focus(), 100);
+    focusWorkInput(document.getElementById('current-quantity-input'));
 }
 
 // Закрити поточну палету як повну і ввести нову
 async function closePalletAndNew() {
+    if (sortActionBlocked()) return;
     try {
-        const res = await fetch('/api/pallet/close', {
+        const res = await fetch('/api/sort/pallet/close', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ icc_code: scannedData.iccCode, type: currentType })
+            body: JSON.stringify({ sort_id: currentSort?.id, icc_id: scannedData.existingData?.id, pallet_id: scannedData.existingPalletId })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -650,13 +778,14 @@ async function closePalletAndNew() {
         }
         // Скинути прив'язку до старої палети
         scannedData.existingPallet = null;
+        scannedData.existingPalletId = null;
         scannedData.isExisting = false;
 
         document.getElementById('existing-pallet-info').style.display = 'none';
         document.getElementById('progress-info-modal3').style.display = 'none';
         document.getElementById('pallet-location-input').value = '';
         document.getElementById('pallet-location-input').placeholder = 'Введіть нову палету';
-        document.getElementById('pallet-location-input').focus();
+        focusWorkInput(document.getElementById('pallet-location-input'));
         showToast(`Палету закрито. Введіть нову локацію.`, 'success', 2500);
     } catch (e) {
         showToast('Помилка з\'єднання з сервером', 'error');
@@ -665,107 +794,79 @@ async function closePalletAndNew() {
 
 // Закрити вікно підтвердження
 function cancelConfirmation() {
+    if (sortActionBlocked()) return;
     document.getElementById('confirmation-modal').style.display = 'none';
     document.getElementById('location-modal').style.display = 'none';
     resetWorkArea();
     if (currentType === 'mix') {
         document.getElementById('mix-input-section').style.display = 'block';
-        document.getElementById('mix-icc-code-input').focus();
+        focusWorkInput(document.getElementById('mix-icc-code-input'));
     } else {
         document.getElementById('single-input-section').style.display = 'block';
-        document.getElementById('icc-code-input').focus();
+        focusWorkInput(document.getElementById('icc-code-input'));
     }
 }
 
 // Підтвердити та відправити на сервер
 async function confirmAndSubmit() {
-    const currentQuantity = scannedData.currentQuantity; // Беремо збережену кількість з другого вікна
-    let palletLocation = document.getElementById('pallet-location-input').value.trim().toUpperCase();
-
-    // Валідація: поле не може бути пустим
-    if (!palletLocation) {
-        showToast('Введіть номер палети для підтвердження!', 'error');
-        document.getElementById('pallet-location-input').focus();
+    if (sortSaveInFlight) return;
+    if (pendingSortSave) return retryPendingSortSave();
+    if (!scannedData || !currentSort) { showToast('Спочатку оберіть сорт і введіть наклейку.', 'warning'); return; }
+    const currentQuantity = Number(scannedData.currentQuantity);
+    const palletLocation = document.getElementById('pallet-location-input').value.trim().toUpperCase();
+    if (!palletLocation || !Number.isInteger(currentQuantity) || currentQuantity < 1) {
+        showToast('Вкажіть номер палети та додатну цілу кількість картонів.', 'error'); return;
+    }
+    if (scannedData.isExisting && scannedData.existingPallet && palletLocation !== scannedData.existingPallet) {
+        showToast(`Очікується палета ${scannedData.existingPallet}. Підтвердіть її або закрийте повну палету.`, 'error', 4500); return;
+    }
+    pendingSortSave = Object.freeze({
+        sort_id: currentSort.id, type: currentType, icc_code: scannedData.iccCode,
+        total_cartons: currentType === 'mix' ? 0 : scannedData.totalCartons,
+        location_code: currentType === 'mix' ? null : scannedData.locationCode,
+        cartons_count: currentQuantity, pallet_number: palletLocation,
+        force_new: !!scannedData.isNewItem, request_id: crypto.randomUUID()
+    });
+    try { sessionStorage.setItem(sortPendingKey, JSON.stringify(pendingSortSave)); }
+    catch (_) {
+        pendingSortSave = null;
+        showToast('Браузер не дозволив зберегти операцію для безпечного повторення. Дозвольте зберігання даних сайту.', 'error', 4500);
         return;
     }
+    return retryPendingSortSave();
+}
 
-    // Якщо товар вже існує - ОБОВ'ЯЗКОВО перевірити чи локація співпадає
-    if (scannedData.isExisting && scannedData.existingPallet) {
-        if (palletLocation !== scannedData.existingPallet) {
-            showToast(`❌ ПОМИЛКА! Локація не співпадає!<br><br>📍 Очікується: <strong>${scannedData.existingPallet}</strong><br>❌ Введено: <strong>${palletLocation}</strong><br><br>⚠️ Введіть правильний номер палети`, 'error', 5000);
-            document.getElementById('pallet-location-input').value = '';
-            document.getElementById('pallet-location-input').focus();
-            return;
-        }
-    }
-
+async function retryPendingSortSave() {
+    if (!pendingSortSave || sortSaveInFlight) return;
+    const payload = pendingSortSave;
+    sortSaveInFlight = true; syncSortSaveControls();
     try {
-        // Якщо це новий товар або ICC ще не існує - створюємо
-        if (scannedData.isNewItem || !scannedData.isExisting) {
-            const createResponse = await fetch('/api/icc/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    icc_code: scannedData.iccCode,
-                    type: currentType,
-                    total_cartons: scannedData.totalCartons,
-                    location_code: scannedData.locationCode,
-                    force_new: scannedData.isNewItem || false
-                })
-            });
-
-            if (!createResponse.ok) {
-                const errorData = await createResponse.json();
-                showToast(errorData.error || 'Помилка створення ICC коду', 'error');
-                return;
-            }
-        }
-
-        // Додаємо поточну кількість картонів на палету
-        const addResponse = await fetch('/api/pallet/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                icc_code: scannedData.iccCode,
-                cartons_count: currentQuantity,
-                pallet_number: palletLocation,
-                type: currentType
-            })
+        const response = await fetch('/api/sort/submit', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
         });
-
-        const addData = await addResponse.json();
-
-        if (addResponse.ok) {
-            // Закрити модальні вікна
-            document.getElementById('confirmation-modal').style.display = 'none';
-            document.getElementById('location-modal').style.display = 'none';
-
-            // Перевірити чи завершено збір
-            if (addData.is_completed) {
-                showToast(`🎉 Сортування завершено!<br><br>Зібрано: ${addData.current_cartons}/${addData.total_cartons} картонів`, 'success', 4000);
-            } else {
-                showToast(`✓ Додано ${currentQuantity} картонів на палету ${palletLocation}<br><br>Прогрес: ${addData.current_cartons}/${addData.total_cartons}`, 'success', 3000);
+        const result = await response.json();
+        if (!response.ok) {
+            if (response.status === 400 || response.status === 409) {
+                clearPendingSortSave();
             }
-
-            // Повернутись до початку для нового сканування
-            resetWorkArea();
-            if (currentType === 'mix') {
-                document.getElementById('mix-input-section').style.display = 'block';
-                document.getElementById('mix-icc-code-input').focus();
-            } else {
-                document.getElementById('single-input-section').style.display = 'block';
-                document.getElementById('icc-code-input').value = '';
-                document.getElementById('cartons-count-input').value = '';
-                document.getElementById('location-code-input').value = '';
-                document.getElementById('icc-code-input').focus();
-            }
-        } else {
-            showToast(addData.error || 'Помилка додавання картонів', 'error');
+            throw new Error(response.status === 401 ? 'Сесія завершилась. Увійдіть у той самий акаунт і повторіть збереження.' : result.error || 'Не вдалося підтвердити збереження. Повторіть цю операцію.');
         }
-
-    } catch (error) {
-        console.error('Помилка відправки даних:', error);
-        showToast('Помилка з\'єднання з сервером', 'error');
+        clearPendingSortSave();
+        document.getElementById('confirmation-modal').style.display = 'none';
+        document.getElementById('location-modal').style.display = 'none';
+        if (currentSort?.id === payload.sort_id) {
+            currentType = payload.type;
+            window.rememberPresortMatch?.({iccCode: payload.icc_code, locationCode: payload.location_code, totalCartons: payload.total_cartons}, payload.type);
+            resetWorkArea();
+            document.getElementById(payload.type === 'mix' ? 'mix-input-section' : 'single-input-section').style.display = 'block';
+            focusWorkInput(document.getElementById(payload.type === 'mix' ? 'mix-icc-code-input' : 'icc-code-input'));
+        }
+        const progress = result.total_cartons ? `\nПрогрес: ${result.current_cartons}/${result.total_cartons}` : '';
+        showToast(`✓ Додано ${payload.cartons_count} картонів на палету ${payload.pallet_number}${progress}${result.is_completed ? '\nЗбір цього товару завершено.' : ''}`, 'success', 4000);
+    } catch (failure) {
+        showToast(failure.message || 'Збереження не підтверджене. Повторіть цю операцію.', 'error', 5000);
+    } finally {
+        sortSaveInFlight = false; syncSortSaveControls();
     }
 }
 
@@ -777,7 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 // Перехід до наступного поля
-                document.getElementById('cartons-count-input').focus();
+                focusWorkInput(document.getElementById('cartons-count-input'));
             }
         });
     }
@@ -787,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cartonsInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                document.getElementById('location-code-input').focus();
+                focusWorkInput(document.getElementById('location-code-input'));
             }
         });
     }
@@ -856,7 +957,7 @@ async function checkICCCode() {
             alert(data.message);
             // Очистити поле для нового сканування
             document.getElementById('icc-code-input').value = '';
-            document.getElementById('icc-code-input').focus();
+            focusWorkInput(document.getElementById('icc-code-input'));
             return;
         }
 
@@ -889,7 +990,7 @@ function showNewICCForm() {
         document.getElementById('total-cartons-group').style.display = 'block';
         // Автофокус на поле кількості
         setTimeout(() => {
-            document.getElementById('total-cartons-input').focus();
+            focusWorkInput(document.getElementById('total-cartons-input'));
         }, 100);
     }
 }
@@ -958,7 +1059,7 @@ function showExistingICCForm(data) {
 
     // Автофокус на поле кількості картонів
     setTimeout(() => {
-        document.getElementById('current-cartons-input').focus();
+        focusWorkInput(document.getElementById('current-cartons-input'));
     }, 100);
 }
 
@@ -1007,7 +1108,7 @@ function proceedToLocationInput() {
         // Якщо немає палети - запитати нову
         document.getElementById('location-input-group').style.display = 'block';
         setTimeout(() => {
-            document.getElementById('new-pallet-number-input').focus();
+            focusWorkInput(document.getElementById('new-pallet-number-input'));
         }, 100);
     }
 }
@@ -1019,7 +1120,7 @@ function showConfirmLocation() {
 
     // Автофокус на поле підтвердження
     setTimeout(() => {
-        document.getElementById('pallet-confirm-input').focus();
+        focusWorkInput(document.getElementById('pallet-confirm-input'));
     }, 100);
 }
 
@@ -1050,7 +1151,7 @@ async function addCartonsWithConfirmation() {
     if (confirmedPallet !== currentPalletNumber) {
         alert(`ПОМИЛКА! Палета не співпадає!\nОчікується: ${currentPalletNumber}\nВведено: ${confirmedPallet}`);
         document.getElementById('pallet-confirm-input').value = '';
-        document.getElementById('pallet-confirm-input').focus();
+        focusWorkInput(document.getElementById('pallet-confirm-input'));
         return;
     }
 
@@ -1104,7 +1205,7 @@ function showSuccessAndReset() {
         document.getElementById('work-area').style.display = 'block';
         document.getElementById('icc-input-section').style.display = 'block';
         setTimeout(() => {
-            document.getElementById('icc-code-input').focus();
+            focusWorkInput(document.getElementById('icc-code-input'));
         }, 100);
     }, 1000);
 }
@@ -1118,7 +1219,7 @@ function backToCartonsInput() {
     document.getElementById('new-pallet-number-input').value = '';
     pendingCartonsCount = null;
     setTimeout(() => {
-        document.getElementById('current-cartons-input').focus();
+        focusWorkInput(document.getElementById('current-cartons-input'));
     }, 100);
 }
 
@@ -1177,6 +1278,7 @@ loadStats();
 // ============================================
 
 let cameraStream = null;
+let cameraGeneration = 0;
 let flashEnabled = false;
 
 // Перемкнути спалах
@@ -1219,12 +1321,14 @@ async function toggleFlash() {
 
 // Відкрити модальне вікно камери
 async function openCameraScanner() {
+    if (sortActionBlocked()) return;
     // Показати тільки для режиму Single
-    if (currentType !== 'single') {
-        alert('Сканування камерою доступне тільки для режиму Single');
+    if (!['single','vevor'].includes(currentType)) {
+        showToast('Оберіть Single або Vevor для цієї форми наклейки.', 'warning');
         return;
     }
 
+    const generation = ++cameraGeneration;
     const modal = document.getElementById('camera-modal');
     const video = document.getElementById('camera-video');
     const statusDiv = document.getElementById('scan-status');
@@ -1235,7 +1339,7 @@ async function openCameraScanner() {
 
     try {
         // Запитати доступ до камери
-        cameraStream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: 'environment', // Задня камера на телефоні
                 width: { ideal: 1920 },
@@ -1244,6 +1348,8 @@ async function openCameraScanner() {
             }
         });
 
+        if (generation !== cameraGeneration) { stream.getTracks().forEach(track => track.stop()); return; }
+        cameraStream = stream;
         video.srcObject = cameraStream;
 
         // Скинути стан кнопки спалаху
@@ -1259,6 +1365,7 @@ async function openCameraScanner() {
         statusDiv.className = 'scan-status';
 
     } catch (error) {
+        if (generation !== cameraGeneration) return;
         console.error('Помилка доступу до камери:', error);
         statusDiv.textContent = 'Помилка доступу до камери. Дозвольте доступ у налаштуваннях браузера.';
         statusDiv.className = 'scan-status error';
@@ -1267,31 +1374,16 @@ async function openCameraScanner() {
 
 // Закрити камеру
 async function closeCameraScanner() {
+    cameraGeneration++;
     const modal = document.getElementById('camera-modal');
     const video = document.getElementById('camera-video');
     const statusDiv = document.getElementById('scan-status');
     const resultDiv = document.getElementById('scan-result');
     const flashBtn = document.getElementById('flash-toggle-btn');
 
-    // Вимкнути спалах перед закриттям
-    if (cameraStream) {
-        try {
-            const videoTrack = cameraStream.getVideoTracks()[0];
-            const capabilities = videoTrack.getCapabilities();
-            if (capabilities.torch) {
-                await videoTrack.applyConstraints({
-                    advanced: [{ torch: false }]
-                });
-                console.log('Спалах вимкнено');
-            }
-        } catch (flashError) {
-            console.log('Помилка вимкнення спалаху:', flashError);
-        }
-
-        // Зупинити відеопотік
-        cameraStream.getTracks().forEach(track => track.stop());
-        cameraStream = null;
-    }
+    // Stopping tracks also releases the torch; no delayed stream may reopen this view.
+    cameraStream?.getTracks().forEach(track => track.stop());
+    cameraStream = null;
 
     // Скинути стан кнопки спалаху
     flashEnabled = false;
@@ -1311,6 +1403,7 @@ async function closeCameraScanner() {
 
 // Зробити фото і розпізнати текст через сервер (EasyOCR)
 async function capturePhoto() {
+    const generation = cameraGeneration;
     const video = document.getElementById('camera-video');
     const canvas = document.getElementById('camera-canvas');
     const statusDiv = document.getElementById('scan-status');
@@ -1329,6 +1422,8 @@ async function capturePhoto() {
     statusDiv.className = 'scan-status scanning';
     resultDiv.style.display = 'none';
 
+    ocrFocusDepth++;
+    document.activeElement?.blur?.();
     try {
         // Конвертувати canvas в blob
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
@@ -1347,25 +1442,26 @@ async function capturePhoto() {
         });
 
         const extractedData = await response.json();
+        if (generation !== cameraGeneration) return;
+
+        if (!response.ok) {
+            statusDiv.textContent = extractedData.error || 'Помилка розпізнавання. Спробуйте ще раз.';
+            statusDiv.className = 'scan-status error';
+            return;
+        }
+        // Guided collection consumes a complete scan directly. Closing the
+        // camera invalidates other responses from this capture session.
+        if (await window.confirmCollectionScan?.(extractedData, currentType)) return;
 
         console.log('Розпізнані дані з сервера:', extractedData);
 
         // Для MIX потрібен тільки ICC код
         if (currentType === 'mix') {
             if (extractedData.cell) {
-                statusDiv.textContent = '✅ MIX код розпізнано!';
-                statusDiv.className = 'scan-status success';
-
-                // Показати toast замість alert
-                showToast(`✅ Розпізнано: ${extractedData.cell}`, 'success', 2000);
-
-                // Закрити камеру через 1 секунду
-                setTimeout(() => {
-                    closeCameraScanner();
-                }, 1000);
-
-                // Заповнити поле ICC коду
                 document.getElementById('mix-icc-code-input').value = extractedData.cell;
+                window.refreshPresortMatches?.();
+                await closeCameraScanner();
+                await submitMixData();
             } else {
                 statusDiv.textContent = '⚠️ ' + (extractedData.error || 'MIX код не розпізнано. Спробуйте ще раз.');
                 statusDiv.className = 'scan-status error';
@@ -1373,14 +1469,7 @@ async function capturePhoto() {
         } else {
             // Для Single - перевірити всі поля
             if (extractedData.cell && extractedData.qtyPack && extractedData.prefix && extractedData.zone) {
-                statusDiv.textContent = '✓ Всі дані розпізнано!';
-                statusDiv.className = 'scan-status success';
-
-                displayScanResults(extractedData);
-
-                setTimeout(() => {
-                    fillICCFromScan(extractedData);
-                }, 1500);
+                await fillICCFromScan(extractedData);
 
             } else {
                 const missing = [];
@@ -1401,6 +1490,8 @@ async function capturePhoto() {
         console.error('Помилка розпізнавання:', error);
         statusDiv.textContent = '❌ Помилка розпізнавання. Спробуйте ще раз.';
         statusDiv.className = 'scan-status error';
+    } finally {
+        ocrFocusDepth--;
     }
 }
 
@@ -1682,7 +1773,7 @@ function displayScanResults(data) {
 }
 
 // Заповнити всі поля з результатів сканування
-function fillICCFromScan(data) {
+async function fillICCFromScan(data) {
     // 1. Заповнити "Ведіть код" = Комірка з чорного квадрата (4 цифри)
     if (data.cell) {
         document.getElementById('icc-code-input').value = data.cell;
@@ -1699,26 +1790,10 @@ function fillICCFromScan(data) {
         document.getElementById('location-code-input').value = locationCode;
     }
 
+    window.refreshPresortMatches?.();
     // Закрити камеру
-    closeCameraScanner();
-
-    // Показати повідомлення про успішне розпізнавання
-    const successMsg = document.createElement('div');
-    successMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #28a745; color: white; padding: 1.5rem 2rem; border-radius: 12px; font-size: 1.2rem; font-weight: bold; z-index: 10001; box-shadow: 0 10px 40px rgba(0,0,0,0.3);';
-    successMsg.textContent = '✓ Дані розпізнано! Перевірте і натисніть "Продовжити"';
-    document.body.appendChild(successMsg);
-
-    setTimeout(() => {
-        successMsg.remove();
-    }, 2000);
-
-    // Встановити фокус на кнопку "Продовжити"
-    setTimeout(() => {
-        const continueBtn = document.querySelector('.btn-large.btn-success');
-        if (continueBtn) {
-            continueBtn.focus();
-        }
-    }, 500);
+    await closeCameraScanner();
+    if (data.cell && data.qtyPack && data.prefix && data.zone) await submitSingleData();
 }
 
 // ============================================
@@ -1727,18 +1802,21 @@ function fillICCFromScan(data) {
 
 // Почати нову палету для MIX (без прив'язки до ICC — просто очищення поля)
 function startNewMixPallet() {
+    if (sortActionBlocked()) return;
     document.getElementById('mix-icc-code-input').value = '';
-    document.getElementById('mix-icc-code-input').focus();
-    showToast('Введіть перший ICC код нової палети', 'info', 2000);
+    focusWorkInput(document.getElementById('mix-icc-code-input'));
+    showToast('Код очищено. Введіть або відскануйте наступну наклейку.', 'info', 2000);
 }
 
 // Відкрити камеру для сканування MIX наклейки
 async function openCameraScannerMix() {
+    if (sortActionBlocked()) return;
     if (currentType !== 'mix') {
         alert('Ця функція доступна тільки для режиму MIX');
         return;
     }
 
+    const generation = ++cameraGeneration;
     const modal = document.getElementById('camera-modal');
     const video = document.getElementById('camera-video');
     const statusDiv = document.getElementById('scan-status');
@@ -1748,7 +1826,7 @@ async function openCameraScannerMix() {
     statusDiv.className = 'scan-status scanning';
 
     try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: 'environment',
                 width: { ideal: 1920 },
@@ -1756,6 +1834,8 @@ async function openCameraScannerMix() {
             }
         });
 
+        if (generation !== cameraGeneration) { stream.getTracks().forEach(track => track.stop()); return; }
+        cameraStream = stream;
         video.srcObject = cameraStream;
         video.play();
 
@@ -1763,94 +1843,47 @@ async function openCameraScannerMix() {
         statusDiv.className = 'scan-status ready';
 
     } catch (error) {
+        if (generation !== cameraGeneration) return;
         console.error('Помилка доступу до камери:', error);
         statusDiv.textContent = '❌ Помилка доступу до камери';
         statusDiv.className = 'scan-status error';
-        setTimeout(() => closeCameraScanner(), 2000);
+        setTimeout(() => { if (generation === cameraGeneration) closeCameraScanner(); }, 2000);
     }
 }
 
 // Зробити фото MIX наклейки
 async function takePictureMix() {
-    const video = document.getElementById('camera-video');
-    const statusDiv = document.getElementById('scan-status');
-    
-    statusDiv.textContent = '📷 Обробка...';
-    statusDiv.className = 'scan-status scanning';
-
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-
-    canvas.toBlob(async (blob) => {
-        const formData = new FormData();
-        formData.append('image', blob, 'mix_scan.jpg');
-        formData.append('type', 'mix');
-
-        try {
-            const response = await fetch('/api/scan_carton', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.cell) {
-                statusDiv.textContent = '✅ Розпізнано!';
-                statusDiv.className = 'scan-status success';
-
-                closeCameraScanner();
-
-                // Заповнити поле ICC коду
-                document.getElementById('mix-icc-code-input').value = result.cell;
-
-                alert(`✅ MIX код розпізнано: ${result.cell}`);
-            } else {
-                statusDiv.textContent = '⚠️ ' + (result.error || 'Не вдалося розпізнати');
-                statusDiv.className = 'scan-status error';
-                setTimeout(() => {
-                    statusDiv.textContent = '📸 Спробуйте ще раз';
-                    statusDiv.className = 'scan-status ready';
-                }, 2000);
-            }
-        } catch (error) {
-            console.error('Помилка сканування:', error);
-            statusDiv.textContent = '❌ Помилка з\'єднання';
-            statusDiv.className = 'scan-status error';
-            setTimeout(() => {
-                statusDiv.textContent = '📸 Спробуйте ще раз';
-                statusDiv.className = 'scan-status ready';
-            }, 2000);
-        }
-    }, 'image/jpeg', 0.95);
+    return capturePhoto();
 }
 
 // Відправити дані MIX картону
 async function submitMixData() {
+    if (sortActionBlocked()) return;
     const iccCode = document.getElementById('mix-icc-code-input').value.trim().toUpperCase();
 
     if (!iccCode) {
         showToast('⚠️ Введіть ICC код MIX!', 'error');
-        document.getElementById('mix-icc-code-input').focus();
+        focusWorkInput(document.getElementById('mix-icc-code-input'));
         return;
     }
 
     if (!/^[A-Z]\d{5,7}$/.test(iccCode)) {
         showToast('⚠️ Неправильний формат MIX коду!\nОчікується: літера + 5-7 цифр (наприклад: D980989)', 'error', 4000);
-        document.getElementById('mix-icc-code-input').focus();
+        focusWorkInput(document.getElementById('mix-icc-code-input'));
         return;
     }
 
+    const checkGeneration = ++sortCheckGeneration;
+    const checkedSortId = currentSort?.id;
     try {
-        const checkResponse = await fetch('/api/icc/check', {
+        const checkResponse = await fetch('/api/sort/check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ icc_code: iccCode, type: 'mix' })
+            body: JSON.stringify({ sort_id: currentSort?.id, icc_code: iccCode, type: 'mix', total_cartons: 0, location_code: null })
         });
 
         const checkData = await checkResponse.json();
+        if (checkGeneration !== sortCheckGeneration || checkedSortId !== currentSort?.id || currentType !== 'mix') return;
 
         if (!checkResponse.ok) {
             showToast(checkData.error || 'Помилка перевірки коду', 'error');
@@ -1869,6 +1902,7 @@ async function submitMixData() {
             scannedData.isExisting = true;
             if (checkData.open_pallet) {
                 scannedData.existingPallet = checkData.open_pallet.pallet_number;
+                scannedData.existingPalletId = checkData.open_pallet.id;
             }
         } else {
             scannedData.isExisting = false;
@@ -1877,7 +1911,14 @@ async function submitMixData() {
         showConfirmationModal();
 
     } catch (error) {
+        if (checkGeneration !== sortCheckGeneration) return;
         console.error('Помилка перевірки MIX ICC:', error);
         showToast('Помилка з\'єднання з сервером', 'error');
     }
 }
+
+document.addEventListener('DOMContentLoaded', async () => {
+    syncSortSaveControls();
+    await loadCurrentSort();
+    syncSortSaveControls();
+});

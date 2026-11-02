@@ -1,0 +1,12 @@
+import {chromium} from 'file:///C:/Users/Lenovo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import {fileURLToPath} from 'node:url';
+const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']});const page=await browser.newPage({viewport:{width:1280,height:850},permissions:['camera']});
+const go=async p=>{await page.goto('http://127.0.0.1:5066'+p);await page.waitForTimeout(500)};
+const shot=async(name,selector)=>{await page.waitForTimeout(2700);await page.locator(selector).screenshot({path:fileURLToPath(new URL('./shots/'+name+'.png',import.meta.url)),animations:'disabled'});console.log(name)};
+await go('/_presentation/enter/2');await page.evaluate(()=>selectSort(1));await shot('types','#sort-menu .modal-content');await page.evaluate(()=>selectType('single'));await page.locator('#icc-code-input').fill('4567');await page.locator('#cartons-count-input').fill('30');await page.locator('#location-code-input').fill('JP-A');await shot('single','#work-area');await page.getByRole('button',{name:'Продовжити'}).click();await shot('quantity','#confirmation-modal .modal-content');await page.locator('#current-quantity-input').fill('6');await page.getByRole('button',{name:'Далі'}).click();await shot('location','#location-modal .modal-content');
+await go('/_presentation/enter/1');await go('/admin');await page.evaluate(async()=>{showSortSubtab('completed');await loadCompletedData()});await shot('completed','#admin-completed');
+await go('/lider');await page.getByRole('button',{name:'Палети',exact:false}).click();await shot('pallets','#lider-pallets');await go('/admin');
+await page.evaluate(()=>showAdminTab('users'));await shot('users','#admin-users');
+await page.evaluate(()=>showAdminTab('ocr'));await shot('ocr','#admin-ocr');
+await page.setViewportSize({width:390,height:844});await go('/_presentation/enter/2');await shot('mobile-home-worker','body');
+await browser.close();

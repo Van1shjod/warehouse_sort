@@ -1,9 +1,0 @@
-{
-  "timestamp": "20260928_134304_138270",
-  "user_id": 1,
-  "carton_type": "single",
-  "success": false,
-  "raw_ocr_results": {},
-  "extracted_data": null,
-  "image_path": "ocr_training_data/single/images/20260928_134304_138270_user1_single_original.jpg"
-}

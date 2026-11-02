@@ -1,0 +1,19 @@
+.presort { max-width: 1000px; padding-bottom: 3rem; }
+.presort header { margin: 2rem 0; }
+.presort p { line-height: 1.6; }
+.presort-card { background: white; border-radius: 14px; padding: 1.5rem; margin: 1.2rem 0; box-shadow: 0 3px 16px #0000000c; }
+.presort label { display: block; font-weight: 600; margin: .75rem 0 .4rem; }
+.presort input, .presort select { width: 100%; min-height: 48px; padding: .7rem; border: 1px solid #b9c3ce; border-radius: 8px; font-size: 1rem; }
+.presort .btn { margin: .4rem 0; white-space: normal; }
+.presort-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.presort-row input { flex: 1; min-width: 180px; }
+.presort-fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.presort fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.presort fieldset:disabled { opacity: .55; }
+.presort .presort-camera { text-align: center; margin-top: 1rem; width: 100%; }
+#message { padding: .8rem; background: #edf3fa; border-radius: 8px; }
+#message.error { background: #ffe8e8; color: #8b1515; }
+.carton-added-notice { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10020; background: #218739; color: white; padding: 1.5rem 2rem; border-radius: 14px; box-shadow: 0 8px 32px #0004; font-size: clamp(1.2rem, 5vw, 1.8rem); font-weight: 700; text-align: center; max-width: calc(100vw - 2rem); width: max-content; pointer-events: none; }
+.carton-added-notice[hidden] { display: none; }
+.presort [hidden] { display: none !important; }
+@media(max-width:600px) { .presort-card { padding: 1rem; } .presort-fields { grid-template-columns: 1fr; gap: .25rem; } .presort-row .btn { width: 100%; } }

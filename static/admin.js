@@ -2,6 +2,32 @@ let allUsers = [];
 let selectedUserId = null;
 let currentEditingICCId = null;
 let confirmCallback = null; // Callback для підтвердження
+let allPallets = [];
+let currentPalletFilter = 'all';
+let adminTaskRequest = 0;
+let creatingSort = false;
+let sortDeletionPending = false;
+const adminText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+async function readAdminJson(url) {
+    const response = await fetch(url);
+    if (response.status === 401) throw new Error('Сесія завершилась. Увійдіть знову.');
+    if (response.status === 403) throw new Error('Для перегляду потрібні права адміністратора.');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Не вдалося завантажити дані');
+    return data;
+}
+
+function showTableMessage(id, message, columns = 7) {
+    const tbody = document.getElementById(id);
+    tbody.replaceChildren();
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = columns;
+    cell.style.cssText = 'text-align: center; padding: 2rem; color: #666;';
+    cell.textContent = message;
+    row.append(cell); tbody.append(row);
+}
 
 // Функція для показу toast повідомлень (замість alert)
 function showToast(message, type = 'info', duration = 2500) {
@@ -25,7 +51,8 @@ function showToast(message, type = 'info', duration = 2500) {
     toastElement.classList.add('show');
 
     // Встановити текст
-    toastElement.innerHTML = message.replace(/\n/g, '<br>');
+    toastElement.textContent = String(message);
+    toastElement.style.whiteSpace = 'pre-line';
 
     // Автоматично сховати через duration мілісекунд
     setTimeout(() => {
@@ -35,17 +62,20 @@ function showToast(message, type = 'info', duration = 2500) {
 
 // Функція для показу кастомного confirm (замість confirm())
 function showConfirm(message, title = '⚠️ Підтвердження') {
+    if (confirmCallback) return Promise.resolve(false);
     return new Promise((resolve) => {
         const modal = document.getElementById('confirm-modal');
         const titleElement = document.getElementById('confirm-title');
         const messageElement = document.getElementById('confirm-message');
 
         titleElement.textContent = title;
-        messageElement.innerHTML = message.replace(/\n/g, '<br>');
+        messageElement.textContent = message;
+        messageElement.style.whiteSpace = 'pre-line';
 
         confirmCallback = resolve;
 
         modal.style.display = 'flex';
+        document.getElementById('confirm-no-btn')?.focus?.();
     });
 }
 
@@ -78,10 +108,15 @@ function showAdminTab(tab) {
     btns.forEach(b => b.classList.remove('active'));
 
     document.getElementById('admin-' + tab).style.display = 'block';
-    event.target.classList.add('active');
+    [...btns].find(button => button.getAttribute('onclick')?.includes(`'${tab}'`))?.classList.add('active');
 
     if (tab === 'sort') {
-        loadSortingData();
+        const visible = [...document.querySelectorAll('.sort-subtab-content')].find(node => node.style.display !== 'none');
+        showSortSubtab(visible ? visible.id.replace('admin-', '') : 'sorting');
+    } else if (tab === 'presort') {
+        window.loadAdminPresort?.();
+    } else if (tab === 'inventory') {
+        window.loadInventoryAdmin?.();
     } else if (tab === 'users') {
         loadUsers();
     } else if (tab === 'activity') {
@@ -101,7 +136,7 @@ function showSortSubtab(subtab) {
     btns.forEach(b => b.classList.remove('active'));
 
     document.getElementById('admin-' + subtab).style.display = 'block';
-    event.target.classList.add('active');
+    [...btns].find(button => button.getAttribute('onclick')?.includes(`'${subtab}'`))?.classList.add('active');
 
     if (subtab === 'sorting') {
         loadSortingData();
@@ -109,6 +144,56 @@ function showSortSubtab(subtab) {
         loadCompletedData();
     } else if (subtab === 'pallets') {
         loadPallets();
+    } else if (subtab === 'create-sort') {
+        loadActiveSorts();
+    }
+}
+
+async function loadPallets() {
+    showTableMessage('pallets-table-body', 'Завантаження палет…');
+    try {
+        allPallets = await readAdminJson('/api/lider/pallets');
+        if (!Array.isArray(allPallets)) throw new Error('Сервер повернув некоректний список палет');
+        filterPallets(currentPalletFilter);
+    } catch (error) {
+        allPallets = [];
+        document.getElementById('pallets-summary').textContent = '';
+        showTableMessage('pallets-table-body', error.message);
+    }
+}
+
+function filterPallets(filter = 'all') {
+    if (!['all', 'open', 'closed', 'single', 'mix', 'vevor'].includes(filter)) return;
+    currentPalletFilter = filter;
+    document.querySelectorAll('.pallet-filter-btn').forEach(button => {
+        button.classList.toggle('active', button.getAttribute('onclick')?.includes(`'${filter}'`));
+    });
+    const closed = allPallets.filter(item => Number(item.pallet.is_closed) === 1).length;
+    const cartons = allPallets.reduce((sum, item) => sum + Number(item.pallet.cartons_count || 0), 0);
+    document.getElementById('pallets-summary').textContent = `Палет SORT: ${allPallets.length} · Відкрито: ${allPallets.length - closed} · Закрито: ${closed} · Картонів: ${cartons}`;
+    const filtered = allPallets.filter(({pallet}) => filter === 'all'
+        || (filter === 'open' && Number(pallet.is_closed) === 0)
+        || (filter === 'closed' && Number(pallet.is_closed) === 1)
+        || pallet.type === filter);
+    if (!filtered.length) {
+        showTableMessage('pallets-table-body', allPallets.length ? 'Немає палет за вибраним фільтром.' : 'Палет SORT ще немає. Вони з’являться після додавання картонів у SORT.');
+        return;
+    }
+    const tbody = document.getElementById('pallets-table-body'); tbody.replaceChildren();
+    const labels = ['Номер палети', 'Тип', 'Товар / локація', 'Картонів', 'Працівник', 'Статус', 'Створено'];
+    for (const {pallet, icc, user} of filtered) {
+        const row = document.createElement('tr');
+        const date = new Date(String(pallet.created_at || '').replace(' ', 'T') + 'Z');
+        const itemLabel = icc ? [icc.last_4_digits, icc.location_code, icc.total_cartons > 0 ? icc.total_cartons + ' PACK' : ''].filter(Boolean).join(' · ') : 'Товар недоступний';
+        const values = [pallet.pallet_number, String(pallet.type || '').toUpperCase(), itemLabel,
+            pallet.cartons_count || 0, user?.username || 'Користувач видалений',
+            Number(pallet.is_closed) === 1 ? 'Закрита' : 'Відкрита', Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('uk-UA')];
+        for (const [index, value] of values.entries()) {
+            const cell = document.createElement('td'); cell.dataset.label = labels[index]; cell.textContent = String(value);
+            if ([0,2,4].includes(index)) cell.dataset.noTranslate='';
+            row.append(cell);
+        }
+        tbody.append(row);
     }
 }
 
@@ -138,15 +223,16 @@ async function loadUsers() {
 
             row.innerHTML = `
                 <td>${user.id}</td>
-                <td>${user.username}</td>
-                <td><span class="badge badge-${user.role}">${roleLabel}</span></td>
+                <td data-no-translate>${adminText(user.username)}</td>
+                <td><span class="badge badge-${user.role === 'admin' ? 'admin' : 'user'}">${roleLabel}</span></td>
                 <td>${statusBadge}</td>
                 <td>${user.total_cartons}</td>
                 <td>${new Date(user.created_at).toLocaleString('uk-UA')}</td>
                 <td>
-                    ${canDelete ? `<button class="btn btn-small btn-danger" onclick="deleteUser(${user.id}, '${user.username}')">Видалити</button>` : '-'}
+                    ${canDelete ? '<button class="btn btn-small btn-danger">Видалити</button>' : '-'}
                 </td>
             `;
+            if (canDelete) row.querySelector('button')?.addEventListener('click',()=>deleteUser(user.id,user.username));
             tbody.appendChild(row);
         });
     } catch (error) {
@@ -200,8 +286,8 @@ async function loadUsersForActivity() {
                 userItem.className = 'user-list-item' + (selectedUserId === user.id ? ' active' : '');
                 userItem.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span><strong>${user.username}</strong></span>
-                        <span class="badge badge-${user.role}" style="font-size: 0.7rem;">${user.role === 'admin' ? 'Admin' : 'User'}</span>
+                        <span><strong data-no-translate>${adminText(user.username)}</strong></span>
+                        <span class="badge badge-${user.role === 'admin' ? 'admin' : 'user'}" style="font-size: 0.7rem;">${user.role === 'admin' ? 'Admin' : 'User'}</span>
                     </div>
                     <div style="font-size: 0.85rem; color: #666;">Картонів: ${user.total_cartons}</div>
                 `;
@@ -228,8 +314,8 @@ async function loadUsersForActivity() {
                 userItem.className = 'user-list-item' + (selectedUserId === user.id ? ' active' : '');
                 userItem.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span><strong>${user.username}</strong></span>
-                        <span class="badge badge-${user.role}" style="font-size: 0.7rem;">${user.role === 'admin' ? 'Admin' : 'User'}</span>
+                        <span><strong data-no-translate>${adminText(user.username)}</strong></span>
+                        <span class="badge badge-${user.role === 'admin' ? 'admin' : 'user'}" style="font-size: 0.7rem;">${user.role === 'admin' ? 'Admin' : 'User'}</span>
                     </div>
                     <div style="font-size: 0.85rem; color: #666;">Картонів: ${user.total_cartons}</div>
                 `;
@@ -299,9 +385,9 @@ async function loadActivity(userId = null) {
 
             row.innerHTML = `
                 <td>${new Date(log.timestamp).toLocaleString('uk-UA')}</td>
-                <td><strong>${username}</strong></td>
-                <td>${log.action}</td>
-                <td>${log.details || '-'}</td>
+                <td><strong data-no-translate>${adminText(username)}</strong></td>
+                <td>${adminText(log.action)}</td>
+                <td>${adminText(log.details || '-')}</td>
             `;
             tbody.appendChild(row);
         });
@@ -361,9 +447,10 @@ loadSortingData();
 
 // Завантажити дані сортування
 async function loadSortingData() {
+    showTableMessage('sorting-table-body', 'Завантаження товарів…');
     try {
-        const response = await fetch('/api/admin/icc_codes');
-        const iccCodes = await response.json();
+        const iccCodes = await readAdminJson('/api/admin/icc_codes');
+        if (!Array.isArray(iccCodes)) throw new Error('Не вдалося прочитати список товарів');
 
         const tbody = document.getElementById('sorting-table-body');
         tbody.innerHTML = '';
@@ -404,7 +491,7 @@ async function loadSortingData() {
                 `
                 : `<div>${current} / ∞</div>`;
 
-            const locationDisplay = icc.location_code || '<span style="color: #999;">—</span>';
+            const locationDisplay = adminText(icc.location_code) || '<span style="color: #999;">—</span>';
             const openPalletsDisplay = icc.open_pallets_count > 0
                 ? `<span class="badge badge-warning">${icc.open_pallets_count} відкритих</span>`
                 : `<span style="color: #999;">—</span>`;
@@ -414,7 +501,7 @@ async function loadSortingData() {
                 : `<span class="badge badge-info">${percentage}%</span>`;
 
             row.innerHTML = `
-                <td><strong>${icc.last_4_digits}</strong></td>
+                <td><strong>${adminText(icc.last_4_digits)}</strong></td>
                 <td>${typeBadge}</td>
                 <td>${progressBar}</td>
                 <td>${locationDisplay}</td>
@@ -430,6 +517,7 @@ async function loadSortingData() {
 
     } catch (error) {
         console.error('Помилка завантаження даних сортування:', error);
+        showTableMessage('sorting-table-body', error.message);
     }
 }
 
@@ -442,6 +530,12 @@ async function openEditICCModal(iccId) {
 
         if (!icc) {
             showToast('ICC код не знайдено', 'error');
+            return;
+        }
+
+        if (icc.sort_id) {
+            showAdminTab('inventory');
+            await window.openInventoryJob?.(icc.sort_id);
             return;
         }
 
@@ -543,9 +637,10 @@ async function deleteICC() {
 
 // Завантажити завершені картони
 async function loadCompletedData() {
+    showTableMessage('completed-table-body', 'Завантаження завершених товарів…');
     try {
-        const response = await fetch('/api/admin/icc_codes');
-        const iccCodes = await response.json();
+        const iccCodes = await readAdminJson('/api/admin/icc_codes');
+        if (!Array.isArray(iccCodes)) throw new Error('Не вдалося прочитати список завершених товарів');
 
         const tbody = document.getElementById('completed-table-body');
         tbody.innerHTML = '';
@@ -580,7 +675,7 @@ async function loadCompletedData() {
             const total = icc.total_cartons || 0;
             const quantity = total > 0 ? `${current} / ${total}` : `${current}`;
 
-            const locationDisplay = icc.location_code || '<span style="color: #999;">—</span>';
+            const locationDisplay = adminText(icc.location_code) || '<span style="color: #999;">—</span>';
             const totalPallets = icc.total_pallets_count || 0;
 
             // Форматувати дату
@@ -594,7 +689,7 @@ async function loadCompletedData() {
             });
 
             row.innerHTML = `
-                <td><strong>${icc.last_4_digits}</strong></td>
+                <td><strong>${adminText(icc.last_4_digits)}</strong></td>
                 <td>${typeBadge}</td>
                 <td>
                     <span class="badge badge-success">${quantity}</span>
@@ -604,7 +699,7 @@ async function loadCompletedData() {
                 <td style="font-size: 0.85rem;">${dateStr}</td>
                 <td>
                     <button class="btn btn-small btn-primary" onclick="viewCompletedDetails(${icc.id})">Переглянути</button>
-                    <button class="btn btn-small btn-danger" onclick="deleteCompletedICC(${icc.id})">Видалити</button>
+                    ${icc.sort_id ? '' : `<button class="btn btn-small btn-danger" onclick="deleteCompletedICC(${icc.id})">Видалити</button>`}
                 </td>
             `;
 
@@ -613,6 +708,7 @@ async function loadCompletedData() {
 
     } catch (error) {
         console.error('Помилка завантаження завершених:', error);
+        showTableMessage('completed-table-body', error.message);
     }
 }
 
@@ -625,6 +721,11 @@ async function viewCompletedDetails(iccId) {
 
         if (!icc) {
             showToast('ICC код не знайдено', 'error');
+            return;
+        }
+        if (icc.sort_id) {
+            showAdminTab('inventory');
+            await window.openInventoryJob?.(icc.sort_id);
             return;
         }
 
@@ -695,7 +796,7 @@ async function loadOcrScans() {
 function filterOcr(filter) {
     currentOcrFilter = filter;
     document.querySelectorAll('.ocr-filter-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
+    document.querySelector(`.ocr-filter-btn[onclick*="'${filter}'"]`)?.classList.add('active');
     renderOcrScans();
 }
 
@@ -748,9 +849,9 @@ function renderOcrScans() {
         <div class="ocr-card ${statusClass}" onclick="showOcrDetail(${realIdx})">
             ${thumbHtml}
             <div class="ocr-card-info">
-                <strong>${scan.carton_type?.toUpperCase() || '?'} &nbsp; <span class="ocr-badge ${statusClass}">${statusLabel}</span></strong>
+                <strong>${scan.carton_type?.toUpperCase() || '?'} &nbsp; <span class="ocr-badge ${statusClass}">${statusLabel}</span>${scan.corrected_data ? ' · Виправлено вручну' : ''}</strong>
                 <span>${date} &nbsp;·&nbsp; user ${scan.user_id}</span>
-                <span style="display:block;margin-top:0.2rem;color:#444;">${extSummary}</span>
+                <span style="display:block;margin-top:0.2rem;color:#444;">${adminText(extSummary)}</span>
             </div>
         </div>`;
     }).join('');
@@ -769,7 +870,7 @@ function showOcrDetail(idx) {
 
     const rawOcr = scan.raw_ocr_results || {};
     const rawRows = Object.entries(rawOcr).map(([k, v]) =>
-        `<tr><td style="padding:0.4rem 0.8rem;font-weight:600;color:#555;white-space:nowrap;">${k}</td><td style="padding:0.4rem 0.8rem;word-break:break-all;">${v}</td></tr>`
+        `<tr><td style="padding:0.4rem 0.8rem;font-weight:600;color:#555;white-space:nowrap;">${adminText(k)}</td><td style="padding:0.4rem 0.8rem;word-break:break-all;">${adminText(v)}</td></tr>`
     ).join('');
 
     const ext = scan.extracted_data || {};
@@ -794,7 +895,7 @@ function showOcrDetail(idx) {
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label>Витягнуті дані</label>
-                    <div>ICC: <strong>${ext.cell || '—'}</strong> &nbsp; PACK: <strong>${ext.qtyPack || '—'}</strong> &nbsp; Зона: <strong>${ext.prefix || '—'}${ext.zone ? '-' + ext.zone : ''}</strong></div>
+                    <div>ICC: <strong>${adminText(ext.cell || '—')}</strong> &nbsp; PACK: <strong>${adminText(ext.qtyPack || '—')}</strong> &nbsp; Зона: <strong>${adminText(ext.prefix || '—')}${ext.zone ? '-' + adminText(ext.zone) : ''}</strong></div>
                 </div>
             </div>
         </div>
@@ -807,12 +908,71 @@ function showOcrDetail(idx) {
                 </table>
             </div>
         </div>` : ''}
+        <form id="ocr-correction-form" style="margin-top:1.5rem;">
+            <h3>Правильні дані з наклейки</h3>
+            <p>Звірте поля з фото. Виправлення зберігаються окремо від результату OCR.</p>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                <div class="form-group"><label for="ocr-correct-cell">ICC код</label><input id="ocr-correct-cell" required></div>
+                <div class="form-group"><label for="ocr-correct-qty">PACK</label><input id="ocr-correct-qty" type="number" min="1" step="1"></div>
+                <div class="form-group"><label for="ocr-correct-prefix">Префікс</label><input id="ocr-correct-prefix"></div>
+                <div class="form-group"><label for="ocr-correct-zone">Зона</label><input id="ocr-correct-zone"></div>
+            </div>
+            <p id="ocr-correction-status" role="status"></p>
+            <button class="btn btn-primary" type="submit">Зберегти виправлення</button>
+        </form>
         <div style="margin-top:1.5rem;text-align:right;">
             <button class="btn btn-danger" onclick="deleteOcrScan(${idx})">Видалити лог</button>
         </div>
     `;
 
+    const corrected = scan.corrected_data || ext;
+    for (const [field, id] of Object.entries({cell: 'cell', qtyPack: 'qty', prefix: 'prefix', zone: 'zone'})) {
+        document.getElementById(`ocr-correct-${id}`).value = corrected[field] ?? '';
+    }
+    if (scan.corrected_data) {
+        document.getElementById('ocr-correction-status').textContent = 'Ручне виправлення збережено';
+    }
+    document.getElementById('ocr-correction-form').addEventListener('submit', event => {
+        event.preventDefault();
+        saveOcrCorrection(idx);
+    });
     modal.style.display = 'flex';
+}
+
+async function saveOcrCorrection(idx) {
+    const scan = allOcrScans[idx];
+    if (!scan) return;
+    const form = document.getElementById('ocr-correction-form');
+    if (!form.reportValidity()) return;
+    const button = form.querySelector('button[type="submit"]');
+    const status = document.getElementById('ocr-correction-status');
+    const value = id => document.getElementById(`ocr-correct-${id}`).value.trim();
+    const correctedData = {
+        cell: value('cell'),
+        qtyPack: value('qty') ? Number(value('qty')) : null,
+        prefix: value('prefix') || null,
+        zone: value('zone') || null
+    };
+    const filename = scan.json_path.replace(/\\/g, '/').split('/').pop();
+    button.disabled = true;
+    status.textContent = 'Збереження…';
+    try {
+        const response = await fetch(`/api/admin/training_data/${encodeURIComponent(filename)}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({carton_type: scan.carton_type, corrected_data: correctedData})
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Не вдалося зберегти виправлення');
+        scan.corrected_data = data.corrected_data;
+        scan.corrected_at = data.corrected_at;
+        renderOcrScans();
+        status.textContent = 'Виправлення збережено';
+    } catch (error) {
+        status.textContent = error.message || 'Помилка з’єднання';
+    } finally {
+        button.disabled = false;
+    }
 }
 
 function closeOcrDetail() {
@@ -876,25 +1036,6 @@ async function deleteOcrScan(idx) {
 // ФУНКЦІЇ ДЛЯ СТВОРЕННЯ СОРТІВ
 // ============================================
 
-// Показати підвкладку створення сортів
-function showSortSubtab(subtab) {
-    // Сховати всі підвкладки
-    const subtabs = document.querySelectorAll('.sort-subtab-content');
-    const btns = document.querySelectorAll('.sort-subtab-btn');
-
-    subtabs.forEach(t => t.style.display = 'none');
-    btns.forEach(b => b.classList.remove('active'));
-
-    // Показати обрану підвкладку
-    document.getElementById('admin-' + subtab).style.display = 'block';
-    event.target.classList.add('active');
-
-    // Завантажити дані для підвкладки створення сорту
-    if (subtab === 'create-sort') {
-        loadActiveSorts();
-    }
-}
-
 // Оновити опції локацій в залежності від типу
 function updateLocationOptions() {
     const locationType = document.getElementById('sort-location-type').value;
@@ -940,8 +1081,19 @@ function updateLocationOptions() {
     updateSortPreview();
 }
 
+window.addEventListener('DOMContentLoaded', () => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'create-sort') {
+        showAdminTab('sort');
+        showSortSubtab('create-sort');
+        document.getElementById('sort-mode').value = 'presort';
+        updateSortPreview();
+    }
+});
+
 // Оновити попередній перегляд сорту
 function updateSortPreview() {
+    const modeLabel = document.getElementById('sort-mode').value === 'presort' ? 'PRE-SORT' : 'SORT';
+    document.getElementById('create-sort-submit').textContent = `✓ Створити ${modeLabel}`;
     const location = document.getElementById('sort-location').value;
     const single = document.getElementById('type-single').checked;
     const mix = document.getElementById('type-mix').checked;
@@ -960,60 +1112,82 @@ function updateSortPreview() {
     if (mix) types.push('Mix');
     if (vevor) types.push('Vevor');
 
-    previewText.textContent = `${location} — ${types.join(' + ')}`;
+    previewText.textContent = `${modeLabel} · ${location} — ${types.join(' + ')}`;
     preview.style.display = 'block';
 }
 
 // Завантажити активні сорти
 async function loadActiveSorts() {
+    const request = ++adminTaskRequest;
+    const container = document.getElementById('active-sorts-list');
+    container.textContent = 'Завантаження завдань…';
     try {
-        const response = await fetch('/api/sorts/all');
-        const sorts = await response.json();
-
-        const activeSorts = sorts.filter(s => s.status === 'active');
-        const container = document.getElementById('active-sorts-list');
-
-        if (activeSorts.length === 0) {
-            container.innerHTML = '<div style="text-align: center; padding: 2rem; background: #f5f5f5; border-radius: 8px; color: #666;">Немає активних сортів</div>';
+        const sorts = await readAdminJson('/api/sorts/all');
+        if (request !== adminTaskRequest) return;
+        if (!Array.isArray(sorts)) throw new Error('Не вдалося прочитати список завдань');
+        const filter = document.getElementById('admin-task-status')?.value || 'all';
+        const visibleSorts = sorts.filter(sort => filter === 'all' || sort.status === filter);
+        if (visibleSorts.length === 0) {
+            container.textContent = sorts.length ? 'За вибраним статусом завдань немає.' : 'Завдань ще немає. Створіть SORT або Pre-sort у формі нижче.';
             return;
         }
-
-        container.innerHTML = activeSorts.map(sort => {
-            const unloadDate = sort.unload_date ?
-                new Date(sort.unload_date).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' }) :
-                '';
-
-            const workingUsers = sort.working_users && sort.working_users.length > 0 ?
-                sort.working_users.map(u => `👤 ${u.username}`).join(', ') :
-                '<span style="color: #999;">Немає активних</span>';
-
-            return `
-                <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #4CAF50;">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                        <div>
-                            <h4 style="margin: 0; font-size: 1.2rem;">${sort.name}</h4>
-                            ${unloadDate ? `<div style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;">📅 ${unloadDate}</div>` : ''}
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button class="btn btn-small btn-warning" onclick="closeSortConfirm(${sort.id}, '${sort.name.replace(/'/g, "\\'")}')">Закрити</button>
-                            <button class="btn btn-small btn-danger" onclick="deleteSortConfirm(${sort.id}, '${sort.name.replace(/'/g, "\\'")}')">Видалити</button>
-                        </div>
-                    </div>
-                    ${sort.description ? `<div style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">${sort.description}</div>` : ''}
-                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
-                        <div style="font-size: 0.9rem; color: #666;">Працюють: ${workingUsers}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        container.replaceChildren();
+        for (const sort of visibleSorts) {
+            const presort = sort.mode === 'presort';
+            const card = document.createElement('article'); card.className = 'admin-task-card';
+            const title = document.createElement('h4');
+            title.dataset.noTranslate=''; title.textContent = `#${sort.id} · ${presort ? 'PRE-SORT' : 'SORT'} · ${sort.name}`;
+            const status = document.createElement('p');
+            status.textContent = `${{active:'Активний',closed:'Закритий',paused:'Призупинений'}[sort.status] || sort.status}${sort.unload_date ? ' · ' + sort.unload_date : ''}`;
+            card.append(title, status);
+            if (sort.description) {
+                const notes = document.createElement('p'); notes.textContent = sort.description; notes.dataset.noTranslate=''; card.append(notes);
+            }
+            const types = document.createElement('p');
+            types.textContent = `Типи картонів: ${String(sort.type || '').split(',').filter(Boolean).map(type => type.toUpperCase()).join(', ') || 'не вказано'}`;
+            const source = document.createElement('p');
+            source.textContent = presort ? 'Етап: розвантаження по палетах → закриття → SORT'
+                : sort.has_presort_source || sort.has_presort_data ? 'Є дані Pre-sort для пошуку початкових палет.' : 'Звичайний SORT без даних Pre-sort.';
+            card.append(types, source);
+            const actions = document.createElement('div'); actions.className = 'admin-task-actions';
+            const action = (label, className, handler) => {
+                const button = document.createElement('button'); button.className = `btn btn-small ${className}`;
+                button.textContent = label; button.onclick = handler; actions.append(button);
+            };
+            if (presort) {
+                const link = document.createElement('a'); link.className = 'btn btn-small btn-primary';
+                link.href = `/presort?sort_id=${sort.id}`; link.textContent = 'Відкрити Pre-sort'; actions.append(link);
+            }
+            if (presort || sort.has_presort_source || sort.has_presort_data) {
+                action('Картони Pre-sort', 'btn-secondary', () => openAdminPresortJob(sort.id));
+            }
+            if (sort.status !== 'closed') action(`Закрити ${presort ? 'Pre-sort' : 'SORT'}`, 'btn-warning', () => closeSortConfirm(sort.id, sort.name));
+            if (presort && sort.status === 'closed') action('Перевести в SORT', 'btn-success', () => convertPresortToSort(sort.id));
+            action('Видалити завдання', 'btn-danger', event => deleteSortConfirm(sort.id, sort.name, event?.currentTarget));
+            card.append(actions); container.append(card);
+        }
     } catch (error) {
+        if (request !== adminTaskRequest) return;
         console.error('Помилка завантаження сортів:', error);
-        showToast('Помилка завантаження сортів', 'error');
+        container.textContent = error.message;
     }
 }
 
 // Створити новий сорт
+async function convertPresortToSort(sortId) {
+    if (!confirm('Перевести закритий Pre-sort в SORT? Дані наклейок і номери палет збережуться.')) return;
+    try {
+        const response = await fetch(`/api/sorts/${sortId}/convert-to-sort`, {method: 'POST'});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Не вдалося перевести в SORT');
+        showToast('Pre-sort переведено в SORT. Дані палет збережено.', 'success');
+        await loadActiveSorts();
+    } catch (error) { showToast(error.message, 'error'); }
+}
+
 async function createNewSort() {
+    if (creatingSort) return;
+    const mode = document.getElementById('sort-mode').value;
     const location = document.getElementById('sort-location').value;
     const single = document.getElementById('type-single').checked;
     const mix = document.getElementById('type-mix').checked;
@@ -1038,6 +1212,9 @@ async function createNewSort() {
     if (mix) types.push('mix');
     if (vevor) types.push('vevor');
 
+    creatingSort = true;
+    const submit = document.getElementById('create-sort-submit');
+    submit.disabled = true;
     try {
         const response = await fetch('/api/sorts', {
             method: 'POST',
@@ -1045,6 +1222,7 @@ async function createNewSort() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+                mode: mode,
                 name: location,
                 type: types.join(','), // Зберігаємо як рядок через кому
                 unload_date: unloadDate || new Date().toISOString().split('T')[0],
@@ -1055,7 +1233,7 @@ async function createNewSort() {
         const data = await response.json();
 
         if (response.ok) {
-            showToast('Сорт створено: ' + location, 'success');
+            showToast((mode === 'presort' ? 'Pre-sort' : 'Сорт') + ' створено: ' + location, 'success');
 
             // Очистити форму
             document.getElementById('sort-location-type').value = '';
@@ -1076,7 +1254,7 @@ async function createNewSort() {
     } catch (error) {
         console.error('Помилка створення сорту:', error);
         showToast('Помилка створення сорту', 'error');
-    }
+    } finally { creatingSort = false; submit.disabled = false; }
 }
 
 // Підтвердження закриття сорту
@@ -1087,9 +1265,17 @@ function closeSortConfirm(sortId, sortName) {
 }
 
 // Підтвердження видалення сорту
-function deleteSortConfirm(sortId, sortName) {
-    if (confirm(`Ви впевнені, що хочете видалити сорт "${sortName}"?\n\nУВАГА: Це видалить всі пов'язані дані!`)) {
-        deleteSort(sortId);
+async function deleteSortConfirm(sortId, sortName, button) {
+    if (sortDeletionPending) return;
+    sortDeletionPending = true;
+    if (button) button.disabled = true;
+    try {
+        if (await showConfirm(`Ви точно хочете видалити цей сорт?\n\n#${sortId} · ${sortName}`, 'Видалити сорт?')) {
+            await deleteSort(sortId);
+        }
+    } finally {
+        sortDeletionPending = false;
+        if (button) button.disabled = false;
     }
 }
 
@@ -1129,7 +1315,7 @@ async function deleteSort(sortId) {
 
         if (response.ok) {
             showToast('Сорт видалено', 'success');
-            loadActiveSorts();
+            await loadActiveSorts();
         } else {
             showToast(data.error || 'Помилка видалення сорту', 'error');
         }

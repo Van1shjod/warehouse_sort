@@ -9,14 +9,61 @@ app.secret_key = os.urandom(24)
 
 db = Database()
 
+from presort import register_presort, create_presort_job, close_presort_job
+register_presort(app, db)
+
+from sorting import register_sorting, close_sort_job
+register_sorting(app, db)
+
+from inventory import register_inventory
+register_inventory(app, db)
+app.config['VEVOR_UNAVAILABLE'] = True
+
 # RapidOCR - швидка альтернатива PaddleOCR для Windows
 ocr_engine = None
+
+
+@app.before_request
+def validate_json_object():
+    if request.method in ('POST','PUT','PATCH','DELETE') and request.is_json:
+        if not isinstance(request.get_json(silent=True),dict):
+            return jsonify(error='Очікується JSON об’єкт'),400
+
+
+def valid_credentials(username,password,new=False):
+    return (isinstance(username,str) and bool(username.strip()) and len(username)<=80
+            and isinstance(password,str) and (4 if new else 1)<=len(password)<=4096)
+
+
+def legacy_sort_request(endpoint):
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data.get('sort_id'):
+        return jsonify(error='Оновіть сторінку та оберіть SORT перед роботою з картонами.'), 400
+    return app.view_functions[endpoint]()
+
+
+def public_user(user):
+    return {key: value for key, value in user.items() if key != 'password'} if user else None
+
+
+def with_sort_sources(sorts):
+    conn = db.get_connection()
+    try:
+        sources = {row['sort_id'] for row in conn.execute('SELECT sort_id FROM presort_jobs')}
+    finally:
+        conn.close()
+    for sort in sorts:
+        sort['has_presort_source'] = sort['id'] in sources
+    return sorts
 
 # Декоратор для перевірки авторизації
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        if 'user_id' not in session or not db.get_user_by_id(session['user_id']):
+            session.clear()
+            if not request.path.startswith('/api/'):
+                return redirect('/')
             return jsonify({'error': 'Необхідна авторизація'}), 401
         return f(*args, **kwargs)
     return decorated_function
@@ -28,7 +75,7 @@ def admin_or_lider_required(f):
         if 'user_id' not in session:
             return jsonify({'error': 'Необхідна авторизація'}), 401
         user = db.get_user_by_id(session['user_id'])
-        if user['role'] not in ['admin']:
+        if not user or user['role'] not in ['admin']:
             return jsonify({'error': 'Недостатньо прав'}), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -38,17 +85,22 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
+            if not request.path.startswith('/api/'):
+                return redirect('/')
             return jsonify({'error': 'Необхідна авторизація'}), 401
         user = db.get_user_by_id(session['user_id'])
-        if user['role'] != 'admin':
+        if not user or user['role'] != 'admin':
+            if not request.path.startswith('/api/'):
+                return redirect('/dashboard' if user else '/')
             return jsonify({'error': 'Потрібні права адміністратора'}), 403
         return f(*args, **kwargs)
     return decorated_function
 
 @app.route('/')
 def index():
-    if 'user_id' in session:
+    if session.get('user_id') and db.get_user_by_id(session['user_id']):
         return redirect(url_for('dashboard'))
+    session.clear()
     return render_template('login.html')
 
 @app.route('/register', methods=['POST'])
@@ -57,7 +109,7 @@ def register():
     username = data.get('username')
     password = data.get('password')
 
-    if not username or not password:
+    if not valid_credentials(username,password,new=True):
         return jsonify({'error': 'Введіть логін і пароль'}), 400
 
     success, message = db.create_user(username, password)
@@ -71,6 +123,8 @@ def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
+    if not valid_credentials(username,password):
+        return jsonify(error='Введіть коректні логін і пароль'),400
 
     success, user = db.verify_user(username, password)
     if success:
@@ -113,163 +167,22 @@ def test_ocr_images():
 @app.route('/api/icc/check', methods=['POST'])
 @login_required
 def check_icc():
-    data = request.get_json()
-    icc_last_4 = data.get('icc_code')  # Для single: 4 цифри, для mix: повний код
-    type_name = data.get('type')
-    total_cartons = data.get('total_cartons')
-    location_code = data.get('location_code')
-
-    if not icc_last_4:
-        return jsonify({'error': 'Введіть код'}), 400
-
-    if type_name == 'mix':
-        import re
-        if not re.match(r'^[A-Za-z]\d{5,7}$', icc_last_4):
-            return jsonify({'error': 'Неправильний формат MIX коду (літера + 5-7 цифр)'}), 400
-
-        existing = db.get_icc_code_by_last_4(icc_last_4, type_name)
-        if existing:
-            open_pallet = db.get_open_pallet(existing['id'], session['user_id'], type_name)
-            return jsonify({
-                'status': 'exists',
-                'icc_data': existing,
-                'open_pallet': open_pallet
-            }), 200
-        return jsonify({'status': 'new'}), 200
-
-    # Single / Vevor: перевірка 4 цифри
-    if len(icc_last_4) != 4 or not icc_last_4.isdigit():
-        return jsonify({'error': 'Введіть рівно 4 цифри'}), 400
-
-    # Якщо передано всі параметри - шукаємо точний збіг товару
-    if total_cartons and location_code:
-        existing = db.get_icc_code_by_last_4(icc_last_4, type_name, total_cartons, location_code)
-
-        if existing:
-            if existing['is_completed']:
-                return jsonify({'status': 'completed', 'message': 'Цей ICC код вже завершено!'}), 200
-
-            open_pallet = db.get_open_pallet(existing['id'], session['user_id'], type_name)
-
-            return jsonify({
-                'status': 'exists',
-                'icc_data': existing,
-                'open_pallet': open_pallet
-            }), 200
-        else:
-            return jsonify({'status': 'new'}), 200
-    else:
-        existing = db.get_icc_code_by_last_4(icc_last_4, type_name)
-
-        if existing:
-            if existing['is_completed']:
-                return jsonify({'status': 'completed', 'message': 'Цей ICC код вже завершено!'}), 200
-
-            open_pallet = db.get_open_pallet(existing['id'], session['user_id'], type_name)
-
-            return jsonify({
-                'status': 'exists',
-                'icc_data': existing,
-                'open_pallet': open_pallet
-            }), 200
-
-        return jsonify({'status': 'new'}), 200
+    return legacy_sort_request('sorting.check')
 
 @app.route('/api/icc/create', methods=['POST'])
 @login_required
 def create_icc():
-    data = request.get_json()
-    icc_last_4 = data.get('icc_code')  # Для single: 4 цифри, для mix: повний код
-    type_name = data.get('type')
-    total_cartons = data.get('total_cartons')
-    location_code = data.get('location_code')
-
-    if not icc_last_4:
-        return jsonify({'error': 'Введіть код'}), 400
-
-    if type_name == 'mix':
-        import re
-        if not re.match(r'^[A-Za-z]\d{5,7}$', icc_last_4):
-            return jsonify({'error': 'Неправильний формат MIX коду'}), 400
-        total_cartons = 0
-    else:
-        if len(icc_last_4) != 4 or not icc_last_4.isdigit():
-            return jsonify({'error': 'Введіть рівно 4 цифри'}), 400
-
-    import time
-    icc_code = f"{type_name.upper()}-{icc_last_4.upper()}-{int(time.time())}"
-
-    success, icc_id = db.create_icc_code(icc_code, type_name, total_cartons, icc_last_4.upper(), location_code)
-    if success:
-        db.log_activity(session['user_id'], 'create_icc', f'Створено ICC код: {icc_last_4} ({type_name})')
-        return jsonify({'message': 'ICC код створено', 'icc_id': icc_id}), 200
-    return jsonify({'error': 'Помилка створення ICC коду'}), 400
+    return jsonify(error='Оновіть сторінку. Товар і картони зберігаються разом під час підтвердження SORT.'), 400
 
 @app.route('/api/pallet/add', methods=['POST'])
 @login_required
 def add_to_pallet():
-    data = request.get_json()
-    icc_last_4 = data.get('icc_code')  # Для single: 4 цифри, для mix: повний код
-    cartons_count = data.get('cartons_count')
-    pallet_number = data.get('pallet_number')
-    type_name = data.get('type', 'single')
-
-    icc_data = db.get_icc_code_by_last_4(icc_last_4, type_name)
-    if not icc_data:
-        return jsonify({'error': 'ICC код не знайдено'}), 404
-
-    # Перевірка чи є відкрита палета того ж типу
-    open_pallet = db.get_open_pallet(icc_data['id'], session['user_id'], type_name)
-
-    if not open_pallet:
-        # Створити нову палету
-        if not pallet_number:
-            return jsonify({'error': 'need_pallet_number', 'message': 'Введіть номер палети'}), 400
-
-        pallet_id = db.create_pallet(pallet_number, icc_data['id'], session['user_id'], icc_data['type'], cartons_count)
-        db.log_activity(session['user_id'], 'create_pallet', f'Створено палету {pallet_number} для ICC-{icc_last_4}')
-    else:
-        # Додати до існуючої палети
-        pallet_id = open_pallet['id']
-        db.update_pallet_cartons(pallet_id, cartons_count)
-
-    # Оновити лічильник ICC коду
-    db.update_icc_cartons_by_id(icc_data['id'], cartons_count)
-
-    # Оновити статистику користувача
-    db.update_user_cartons(session['user_id'], cartons_count)
-
-    db.log_activity(session['user_id'], 'add_cartons', f'Додано {cartons_count} картонів до ICC-{icc_last_4}')
-
-    # Перевірити чи завершено
-    updated_icc = db.get_icc_code_by_id(icc_data['id'])
-    is_completed = updated_icc['is_completed']
-
-    return jsonify({
-        'message': 'Картони додано',
-        'current_cartons': updated_icc['current_cartons'],
-        'total_cartons': updated_icc['total_cartons'],
-        'is_completed': is_completed
-    }), 200
+    return legacy_sort_request('sorting.submit')
 
 @app.route('/api/pallet/close', methods=['POST'])
 @login_required
 def close_pallet():
-    data = request.get_json()
-    icc_last_4 = data.get('icc_code')  # Останні 4 цифри
-    type_name = data.get('type', 'single')  # Додати тип для правильного пошуку
-
-    icc_data = db.get_icc_code_by_last_4(icc_last_4, type_name)
-    if not icc_data:
-        return jsonify({'error': 'ICC код не знайдено'}), 404
-
-    open_pallet = db.get_open_pallet(icc_data['id'], session['user_id'], type_name)
-    if open_pallet:
-        db.close_pallet(open_pallet['id'])
-        db.log_activity(session['user_id'], 'close_pallet', f'Закрито палету {open_pallet["pallet_number"]}')
-        return jsonify({'message': 'Палету закрито'}), 200
-
-    return jsonify({'error': 'Немає відкритої палети'}), 400
+    return legacy_sort_request('sorting.close')
 
 @app.route('/api/stats', methods=['GET'])
 @login_required
@@ -301,7 +214,7 @@ def get_all_pallets_info():
         result.append({
             'pallet': pallet,
             'icc': icc,
-            'user': user
+            'user': public_user(user)
         })
 
     return jsonify(result), 200
@@ -317,7 +230,7 @@ def get_all_icc():
 @admin_required
 def get_all_users_admin():
     users = db.get_all_users()
-    return jsonify(users), 200
+    return jsonify([public_user(user) for user in users]), 200
 
 @app.route('/api/admin/create_account', methods=['POST'])
 @admin_required
@@ -326,6 +239,8 @@ def create_account():
     username = data.get('username')
     password = data.get('password')
     role = data.get('role', 'user')
+    if not valid_credentials(username,password,new=True):
+        return jsonify(error='Введіть логін і пароль від 4 символів'),400
 
     # Перевірка валідності ролі (тільки user або admin)
     if role not in ['user', 'admin']:
@@ -364,11 +279,11 @@ def get_user_activity_admin(user_id):
 @login_required
 def recognize_label():
     global ocr_engine
-    from PIL import Image
-    import cv2
+    if request.form.get('type', 'single').lower() == 'vevor':
+        return jsonify(error='Vevor ще в розробці'), 409
+    from PIL import Image, ImageOps
     import numpy as np
     import io
-    import tempfile
     from datetime import datetime
 
     try:
@@ -394,7 +309,7 @@ def recognize_label():
 
         image_file = request.files['image']
         image_bytes = image_file.read()
-        image_pil = Image.open(io.BytesIO(image_bytes))
+        image_pil = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert('RGB')
         image_np = np.array(image_pil)
 
         # Зберегти оригінальне зображення для навчання (окремо для кожного типу)
@@ -406,64 +321,15 @@ def recognize_label():
         original_path = f'{training_dir}/{timestamp}_user{user_id}_{carton_type}_original.jpg'
         image_pil.save(original_path, quality=95)
 
-        # Підготувати кілька варіантів обробки зображення
-        processed_images = []
+        # Спершу читати поля наклейки, за потреби запускати повний OCR.
+        from ocr_labels import recognize_label_image
+        data, raw_results = recognize_label_image(image_np, carton_type, ocr_engine)
 
-        # Варіант 1: Оригінал
-        processed_images.append(('original', image_np))
-
-        # Варіант 2: Інверсія чорних блоків (для білого тексту на чорному)
-        gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-        _, dark_mask = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
-        inverted = cv2.bitwise_not(gray)
-        inv_processed = np.where(dark_mask > 0, inverted, gray)
-        processed_images.append(('inverted', inv_processed))
-
-        # Варіант 3: Висока контрастність
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
-        contrast_enhanced = clahe.apply(gray)
-        processed_images.append(('contrast', contrast_enhanced))
-
-        # Варіант 4: Бінаризація Otsu
-        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        processed_images.append(('binary', binary))
-
-        # Розпізнати з кожного варіанту та об'єднати результати
-        all_texts = []
-        raw_results = {}  # Зберігаємо всі результати для логування
-
-        for variant_name, img in processed_images:
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-                if len(img.shape) == 2:  # grayscale
-                    Image.fromarray(img).save(tmp.name)
-                else:  # color
-                    Image.fromarray(img).save(tmp.name)
-                temp_path = tmp.name
-
-            try:
-                result, _ = ocr_engine(temp_path)
-                if result:
-                    text = ' '.join([line[1] for line in result])
-                    all_texts.append(text)
-                    raw_results[variant_name] = text
-                    print(f'OCR ({variant_name}): {text[:100]}...')
-            finally:
-                os.unlink(temp_path)
-
-        if not all_texts:
+        if not raw_results and not any(data.values()):
             # Зберегти інформацію про невдалу спробу
             save_training_result(timestamp, user_id, carton_type, raw_results, None, False)
             return jsonify({'error': 'Текст не розпізнано на зображенні'}), 400
 
-        # Об'єднати всі результати
-        combined_text = ' '.join(all_texts)
-        print(f'Об\'єднаний текст ({len(all_texts)} варіантів): {combined_text[:150]}...')
-
-        # Витягти дані з об'єднаного тексту (різна логіка для різних типів)
-        if carton_type == 'mix':
-            data = extract_mix_label_data(combined_text)
-        else:
-            data = extract_label_data(combined_text)
         print('Витягнуті дані:', data)
 
         # Перевірка чи всі поля знайдено
@@ -520,179 +386,14 @@ def save_training_result(timestamp, user_id, carton_type, raw_results, extracted
     print(f'Training data saved: {result_path}')
 
 def extract_label_data(full_text):
-    """Витягти потрібні дані з розпізнаного тексту: комірка, PACK, префікс-зона"""
-    import re
+    from ocr_labels import parse_label_text
+    return parse_label_text(full_text)
 
-    data = {
-        'cell': None,
-        'qtyPack': None,
-        'prefix': None,
-        'zone': None
-    }
-
-    text_upper = full_text.upper()
-
-    # Комірка (4 цифри) - шукаємо найбільш імовірну
-    cell_matches = re.findall(r'\b(\d{4})\b', text_upper)
-    if cell_matches:
-        # Фільтруємо: беремо перше 4-значне число яке не є частиною довгого номера
-        for match in cell_matches:
-            # Перевіряємо що це не частина ICC коду або інших довгих номерів
-            context = re.search(rf'.{{0,5}}{match}.{{0,5}}', full_text)
-            if context and not re.search(r'ICC|PACK\s*ID|REF', context.group(), re.IGNORECASE):
-                data['cell'] = match
-                break
-
-    # PACK - шукаємо число біля слова PACK або число в діапазоні 1-999
-    pack_patterns = [
-        r'(\d{1,3})\s*PACK',
-        r'PACK\s*(\d{1,3})',
-        r'(\d{1,3})\s*PCS',
-        r'PCS\s*(\d{1,3})',
-        r'\b(\d{1,2})\s+PACK\b',
-        r'\bPACK\s+(\d{1,2})\b',
-    ]
-    for pattern in pack_patterns:
-        matches = re.findall(pattern, text_upper)
-        if matches:
-            try:
-                qty = int(matches[0])
-                if 1 <= qty <= 200:
-                    data['qtyPack'] = qty
-                    break
-            except:
-                pass
-
-    # Якщо PACK не знайдено, шукаємо окремі числа в розумному діапазоні
-    if not data['qtyPack']:
-        standalone_numbers = re.findall(r'\b([1-9]\d?)\b', text_upper)
-        for num_str in standalone_numbers:
-            num = int(num_str)
-            if 4 <= num <= 99 and num_str != data.get('cell'):
-                data['qtyPack'] = num
-                break
-
-    # Префікс-зона (IZ-A, KN-E, BH-A тощо) - покращені патерни
-    zone_patterns = [
-        r'\b([A-Z]{2})\s*-\s*([A-Z])\b',
-        r'\b([A-Z]{2})-([A-Z])\b',
-        r'\b([A-Z]{2})\s+([A-Z])\s+\d',
-        r'\b([A-Z]{2})\s*-\s*[A-Z0-9]\b',  # Більш гнучкий патерн
-        r'\b([A-Z0-9]{2})\s*-\s*([A-Z])\b',  # Дозволяє 1 замість I
-        r'\bI[Z1]\s*-\s*([A-Z])\b',  # Спеціально для IZ/1Z
-        r'\b([A-Z]{2})\s*-\s*',  # Префікс без зони
-        r'\b([A-Z]{2})\s*-\s*[A-Z0-9\s]*',  # Префікс з будь-яким текстом після дефісу
-        r'\b([A-Z]{2})\s*-\s*[A-Z]\b',  # Дво-буквений префікс з однією буквою після дефісу
-    ]
-    for pattern in zone_patterns:
-        match = re.search(pattern, text_upper)
-        if match:
-            prefix = match.group(1)
-            # Виправити поширені помилки розпізнавання
-            prefix = prefix.replace('1', 'I').replace('0', 'O')
-
-            # Отримати зону якщо є
-            zone = match.group(2) if len(match.groups()) > 1 else None
-            if zone:
-                zone = zone.replace('1', 'I').replace('0', 'O')
-
-            if prefix in ['IZ', 'KN', 'BH', 'EM', 'VX', 'MZ', 'LZ', 'RZ', 'TZ', 'WZ'] or len(prefix) == 2:
-                data['prefix'] = prefix
-                data['zone'] = zone
-                break
-
-    # Додатковий пошук: шукаємо дві великі літери перед дефісом
-    if not data['prefix']:
-        # Шукаємо шаблон дві літери, потім дефіс, потім будь-що
-        two_letter_dash = re.search(r'\b([A-Z]{2})\s*-', text_upper)
-        if two_letter_dash:
-            prefix = two_letter_dash.group(1)
-            prefix = prefix.replace('1', 'I').replace('0', 'O')
-            if len(prefix) == 2:
-                data['prefix'] = prefix
-                # Спроба знайти зону після дефісу
-                after_dash = text_upper[two_letter_dash.end():]
-                zone_match = re.search(r'\b([A-Z])\b', after_dash)
-                if zone_match:
-                    zone = zone_match.group(1).replace('1', 'I').replace('0', 'O')
-                    data['zone'] = zone
-
-    # Спеціальний пошук для шаблону TO: followed by location code
-    if not data['prefix']:
-        # Шукаємо TO: або FROM: після яких може бути локація
-        to_pattern = re.search(r'TO:\s*([A-Z]{2})', text_upper)
-        if to_pattern:
-            prefix = to_pattern.group(1)
-            prefix = prefix.replace('1', 'I').replace('0', 'O')
-            if len(prefix) == 2:
-                data['prefix'] = prefix
-                # Шукаємо зону після префікса
-                after_prefix = text_upper[to_pattern.end():]
-                zone_match = re.search(r'\s*-\s*([A-Z])', after_prefix)
-                if zone_match:
-                    zone = zone_match.group(1).replace('1', 'I').replace('0', 'O')
-                    data['zone'] = zone
-
-    # Ще один підхід: шукаємо слова, які схожі на локації
-    if not data['prefix']:
-        # Шукаємо слова, які закінчуються на XB, KB, AB (можливо бути частиною IZ-B, IZ-A тощо)
-        location_words = re.findall(r'\b([A-Z]{2})[XBAB]\b', text_upper)
-        for word in location_words:
-            prefix = word[:2]
-            prefix = prefix.replace('1', 'I').replace('0', 'O')
-            if prefix in ['IZ', 'KN', 'BH', 'EM', 'VX', 'MZ', 'LZ', 'RZ', 'TZ', 'WZ']:
-                data['prefix'] = prefix
-                # Остання буква може бути зоною
-                possible_zone = word[2].replace('1', 'I').replace('0', 'O')
-                if possible_zone.isalpha():
-                    data['zone'] = possible_zone
-                break
-
-    # Якщо знайдено префікс але не зону, спробуємо знайти зону після префікса в тексті
-    if data['prefix'] and not data['zone']:
-        # Шукаємо префікс і потім окрему букву після нього
-        prefix_pattern = re.escape(data['prefix'])
-        # Шукаємо букву A після префікса (найпоширеніша зона)
-        zone_pattern = re.search(rf'{prefix_pattern}[^A-Z]*([A-Z])', text_upper)
-        if zone_pattern:
-            zone = zone_pattern.group(1).replace('1', 'I').replace('0', 'O')
-            data['zone'] = zone
-
-    return data
 
 def extract_mix_label_data(full_text):
-    """Витягти дані з MIX наклейки - тільки ICC код (літера + цифри)"""
-    import re
+    from ocr_labels import parse_mix_text
+    return parse_mix_text(full_text)
 
-    data = {
-        'cell': None,
-        'qtyPack': None,
-        'prefix': None,
-        'zone': None
-    }
-
-    text_upper = full_text.upper()
-
-    # Витягти ICC код - перший рядок (літера + 5-7 цифр)
-    # Приклади: D980989, D980947, A123456, B7654321
-    icc_patterns = [
-        r'\b([A-Z]\d{6,7})\b',  # Літера + 6-7 цифр (найпоширеніше)
-        r'\b([A-Z]\d{5})\b',    # Літера + 5 цифр
-        r'\b([A-Z]{1,2}\d{5,7})\b',  # 1-2 літери + 5-7 цифр
-    ]
-
-    for pattern in icc_patterns:
-        matches = re.findall(pattern, text_upper)
-        if matches:
-            # Фільтруємо щоб виключити "Made in China" та інші слова
-            for match in matches:
-                if not any(word in match for word in ['MADE', 'CHINA', 'IN', 'PACK']):
-                    data['cell'] = match
-                    print(f'MIX ICC код знайдено: {match}')
-                    return data
-
-    print('MIX ICC код не знайдено')
-    return data
 
 @app.route('/api/admin/training_data', methods=['GET'])
 @admin_required
@@ -722,6 +423,8 @@ def get_training_data():
                         'carton_type': data.get('carton_type', ctype),
                         'success': data.get('success'),
                         'extracted_data': data.get('extracted_data'),
+                        'corrected_data': data.get('corrected_data'),
+                        'corrected_at': data.get('corrected_at'),
                         'image_path': data.get('image_path')
                     })
             except Exception as e:
@@ -739,17 +442,47 @@ def update_training_data(filename):
     import json
     from pathlib import Path
 
-    results_dir = Path('ocr_training_data/results')
-    result_file = results_dir / filename
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Очікується JSON об’єкт'}), 400
+    if '/' in filename or '\\' in filename or not filename.endswith('.json'):
+        return jsonify({'error': 'Некоректна назва файлу'}), 400
 
-    if not result_file.exists():
+    carton_type = data.get('carton_type')
+    types = ['single', 'mix', 'vevor']
+    if carton_type is not None and carton_type not in types:
+        return jsonify({'error': 'Невідомий тип картону'}), 400
+    directories = [Path('ocr_training_data') / ctype / 'results'
+                   for ctype in ([carton_type] if carton_type else types)]
+    if carton_type is None:
+        directories.append(Path('ocr_training_data/results'))
+    matches = [directory / filename for directory in directories
+               if (directory / filename).is_file()]
+    if not matches:
         return jsonify({'error': 'Файл не знайдено'}), 404
+    if len(matches) > 1:
+        return jsonify({'error': 'Вкажіть тип картону для цього файлу'}), 409
+    result_file = matches[0]
 
-    data = request.get_json()
     corrected_data = data.get('corrected_data')
-
-    if not corrected_data:
+    if not isinstance(corrected_data, dict):
         return jsonify({'error': 'Не вказано виправлені дані'}), 400
+    cell = corrected_data.get('cell')
+    if not isinstance(cell, str) or not cell.strip():
+        return jsonify({'error': 'Вкажіть ICC код'}), 400
+    qty = corrected_data.get('qtyPack')
+    if qty is not None and (type(qty) is not int or qty < 1):
+        return jsonify({'error': 'PACK має бути додатним цілим числом'}), 400
+    for field in ['prefix', 'zone']:
+        value = corrected_data.get(field)
+        if value is not None and not isinstance(value, str):
+            return jsonify({'error': 'Префікс і зона мають бути текстом'}), 400
+    corrected_data = {
+        'cell': cell.strip().upper(),
+        'qtyPack': qty,
+        'prefix': (corrected_data.get('prefix') or '').strip().upper() or None,
+        'zone': (corrected_data.get('zone') or '').strip().upper() or None
+    }
 
     try:
         with open(result_file, 'r', encoding='utf-8') as f:
@@ -764,7 +497,8 @@ def update_training_data(filename):
             json.dump(original_data, f, ensure_ascii=False, indent=2)
 
         db.log_activity(session['user_id'], 'correct_ocr', f'Виправлено OCR дані: {filename}')
-        return jsonify({'message': 'Дані оновлено'}), 200
+        return jsonify({'message': 'Дані оновлено', 'corrected_data': corrected_data,
+                        'corrected_at': original_data['corrected_at']}), 200
 
     except Exception as e:
         print(f'Помилка оновлення {result_file}: {e}')
@@ -825,6 +559,12 @@ def get_training_stats():
 def get_all_icc_codes_admin():
     """Отримати всі ICC коди (в процесі та завершені)"""
     codes = db.get_all_icc_codes()
+    conn=db.get_connection()
+    try:
+        visible={row['id'] for row in conn.execute("SELECT id FROM sorts WHERE status<>'deleted'")}
+    finally:
+        conn.close()
+    codes=[code for code in codes if code.get('sort_id') is None or code['sort_id'] in visible]
 
     # Додати інформацію про відкриті палети
     for code in codes:
@@ -849,6 +589,18 @@ def update_icc_code_admin(icc_id):
     cursor = conn.cursor()
 
     try:
+        conn.execute('BEGIN IMMEDIATE')
+        icc=conn.execute('SELECT * FROM icc_codes WHERE id=?',(icc_id,)).fetchone()
+        if not icc:
+            return jsonify(error='ICC код не знайдено'),404
+        if icc['sort_id'] is not None:
+            return jsonify(error='Змінюйте цей товар у вкладці «Рухи та залишки».',sort_id=icc['sort_id']),409
+        if (type(total_cartons) is not int or type(current_cartons) is not int
+                or total_cartons<0 or current_cartons<0 or max(total_cartons,current_cartons)>999999999
+                or (icc['type']!='mix' and (total_cartons<1 or current_cartons>total_cartons))):
+            return jsonify(error='Перевірте цілу кількість картонів і PACK'),400
+        if location_code is not None and not isinstance(location_code,str):
+            return jsonify(error='Перевірте кодові букви'),400
         # Оновити дані
         cursor.execute("""
             UPDATE icc_codes
@@ -862,8 +614,8 @@ def update_icc_code_admin(icc_id):
         else:
             cursor.execute("UPDATE icc_codes SET is_completed = 0 WHERE id = ?", (icc_id,))
 
+        conn.execute('INSERT INTO activity_log(user_id,action,details) VALUES(?,?,?)',(session['user_id'],'update_icc',f'Оновлено ICC код ID: {icc_id}'))
         conn.commit()
-        db.log_activity(session['user_id'], 'update_icc', f'Оновлено ICC код ID: {icc_id}')
         return jsonify({'message': 'ICC код оновлено'}), 200
     except Exception as e:
         conn.rollback()
@@ -879,12 +631,15 @@ def delete_icc_code_admin(icc_id):
     cursor = conn.cursor()
 
     try:
+        conn.execute('BEGIN IMMEDIATE')
         # Отримати інформацію про ICC перед видаленням
         cursor.execute("SELECT * FROM icc_codes WHERE id = ?", (icc_id,))
         icc = cursor.fetchone()
 
         if not icc:
             return jsonify({'error': 'ICC код не знайдено'}), 404
+        if icc['sort_id'] is not None:
+            return jsonify(error='Товар має журнал обліку. Використовуйте «Рухи та залишки» або видалення завдання.',sort_id=icc['sort_id']),409
 
         # Видалити всі палети для цього ICC
         cursor.execute("DELETE FROM pallets WHERE icc_code_id = ?", (icc_id,))
@@ -892,8 +647,8 @@ def delete_icc_code_admin(icc_id):
         # Видалити ICC код
         cursor.execute("DELETE FROM icc_codes WHERE id = ?", (icc_id,))
 
+        conn.execute('INSERT INTO activity_log(user_id,action,details) VALUES(?,?,?)',(session['user_id'],'delete_icc',f'Видалено ICC код: {icc["last_4_digits"]} ({icc["type"]})'))
         conn.commit()
-        db.log_activity(session['user_id'], 'delete_icc', f'Видалено ICC код: {icc["last_4_digits"]} ({icc["type"]})')
         return jsonify({'message': 'ICC код видалено'}), 200
     except Exception as e:
         conn.rollback()
@@ -999,6 +754,8 @@ def get_containers():
 def create_container():
     """Створити новий контейнер (тільки для admin)"""
     data = request.get_json()
+    if not isinstance(data.get('container_number'),str):
+        return jsonify(error='Введіть номер контейнера'),400
     container_number = data.get('container_number', '').strip().upper()
 
     if not container_number:
@@ -1032,8 +789,10 @@ def update_container_status(container_id):
     if status not in ['active', 'completed', 'paused']:
         return jsonify({'error': 'Невірний статус'}), 400
 
-    db.update_container_status(container_id, status)
     container = db.get_container_by_id(container_id)
+    if not container:
+        return jsonify(error='Контейнер не знайдено'),404
+    db.update_container_status(container_id, status)
     db.log_activity(session['user_id'], 'update_container',
                    f'Оновлено статус контейнера {container["container_number"]}: {status}')
     return jsonify({'message': 'Статус оновлено'}), 200
@@ -1045,6 +804,9 @@ def select_container():
     data = request.get_json()
     container_id = data.get('container_id')
     sort_id = data.get('sort_id')  # Опціонально - ID сорту
+    if any(value is not None and (isinstance(value,bool) or not str(value).isdecimal() or len(str(value))>9 or int(value)<1)
+           for value in (container_id,sort_id)):
+        return jsonify(error='Перевірте номер контейнера та сорту'),400
 
     if not container_id:
         return jsonify({'error': 'Вкажіть контейнер'}), 400
@@ -1106,13 +868,16 @@ def get_all_sessions():
 def get_sorts():
     """Отримати активні сорти для користувачів"""
     sorts = db.get_active_sorts_for_user()
-    return jsonify(sorts), 200
+    mode = request.args.get('mode')
+    if mode:
+        sorts = [sort for sort in sorts if sort.get('mode', 'sort') == mode]
+    return jsonify(with_sort_sources(sorts)), 200
 
 @app.route('/api/sorts/all', methods=['GET'])
 @admin_required
 def get_all_sorts():
     """Отримати всі сорти (для admin)"""
-    sorts = db.get_all_sorts()
+    sorts = with_sort_sources(db.get_all_sorts())
 
     # Додати інформацію про користувачів які працюють з кожним сортом
     for sort in sorts:
@@ -1125,15 +890,39 @@ def get_all_sorts():
 def create_sort():
     """Створити новий сорт (тільки для admin)"""
     data = request.get_json()
+    if any(not isinstance(data.get(key,''),str) for key in ('name','type','unload_date','description')):
+        return jsonify(error='Перевірте дані сорту'),400
     name = data.get('name', '').strip()
     sort_type = data.get('type', '').strip()
     unload_date = data.get('unload_date', '').strip()
     description = data.get('description', '').strip()
+    mode = data.get('mode', 'sort')
+
+    if 'vevor' in sort_type.lower().split(','):
+        return jsonify(error='Vevor ще в розробці. Оберіть Single або Mix.'), 409
+
+    if mode not in ('sort', 'presort'):
+        return jsonify({'error': 'Оберіть SORT або PRE-SORT'}), 400
 
     if not name or not sort_type or not unload_date:
         return jsonify({'error': 'Заповніть всі обов\'язкові поля'}), 400
+    selected=[kind.strip().lower() for kind in sort_type.split(',')]
+    if any(kind not in ('single','mix') for kind in selected):
+        return jsonify(error='Оберіть Single та/або Mix'),400
+    sort_type=','.join(dict.fromkeys(selected))
+    try:
+        datetime.strptime(unload_date,'%Y-%m-%d')
+    except ValueError:
+        return jsonify(error='Перевірте дату розвантаження'),400
 
-    success, sort_id = db.create_sort(name, sort_type, unload_date, description, session['user_id'])
+    if mode == 'presort':
+        try:
+            sort_id = create_presort_job(db, name, sort_type, unload_date, description, session['user_id'])
+            success = True
+        except ValueError as error:
+            return jsonify({'error': str(error)}), 400
+    else:
+        success, sort_id = db.create_sort(name, sort_type, unload_date, description, session['user_id'])
     if success:
         db.log_activity(session['user_id'], 'create_sort', f'Створено сорт: {name} ({sort_type}, {unload_date})')
         return jsonify({'message': 'Сорт створено', 'sort_id': sort_id}), 200
@@ -1150,13 +939,19 @@ def get_sort(sort_id):
     # Додати статистику
     sort['working_users'] = db.get_users_working_on_sort(sort_id)
 
-    return jsonify(sort), 200
+    return jsonify(with_sort_sources([sort])[0]), 200
 
 @app.route('/api/sorts/<int:sort_id>', methods=['PUT'])
 @admin_required
 def update_sort(sort_id):
     """Оновити інформацію про сорт"""
+    if not db.get_sort_by_id(sort_id):
+        return jsonify(error='Сорт не знайдено'),404
     data = request.get_json()
+    if any(data.get(key) is not None and not isinstance(data[key],str) for key in ('name','type','unload_date','description')):
+        return jsonify(error='Перевірте дані сорту'),400
+    if data.get('type') is not None and any(kind not in ('single','mix') for kind in data['type'].split(',')):
+        return jsonify(error='Оберіть Single та/або Mix'),400
     name = data.get('name')
     sort_type = data.get('type')
     unload_date = data.get('unload_date')
@@ -1178,8 +973,21 @@ def update_sort_status(sort_id):
     if status not in ['active', 'paused', 'closed']:
         return jsonify({'error': 'Невірний статус'}), 400
 
-    db.update_sort_status(sort_id, status)
+    current = db.get_sort_by_id(sort_id)
+    if not current:
+        return jsonify({'error': 'Сорт не знайдено'}), 404
+    try:
+        if current.get('mode') == 'presort' and status == 'closed':
+            close_presort_job(db, sort_id)
+        elif current.get('mode') == 'sort' and status == 'closed':
+            close_sort_job(db, sort_id)
+        else:
+            db.update_sort_status(sort_id, status)
+    except ValueError as error:
+        return jsonify(error=str(error)),409
     sort = db.get_sort_by_id(sort_id)
+    if not sort:
+        return jsonify(error='Сорт не знайдено'),404
     db.log_activity(session['user_id'], 'update_sort_status',
                    f'Оновлено статус сорту {sort["name"]}: {status}')
     return jsonify({'message': 'Статус оновлено'}), 200
@@ -1187,16 +995,11 @@ def update_sort_status(sort_id):
 @app.route('/api/sorts/<int:sort_id>', methods=['DELETE'])
 @admin_required
 def delete_sort(sort_id):
-    """Видалити сорт"""
-    sort = db.get_sort_by_id(sort_id)
-    if not sort:
-        return jsonify({'error': 'Сорт не знайдено'}), 404
-
-    if not request.args.get('confirm'):
+    """Explicitly confirmed removal, including unfinished tasks."""
+    if request.args.get('confirm') != 'true':
         return jsonify({'error': 'Підтвердіть видалення'}), 400
-
-    db.delete_sort(sort_id)
-    db.log_activity(session['user_id'], 'delete_sort', f'Видалено сорт: {sort["name"]}')
+    if not db.delete_sort(sort_id,session['user_id']):
+        return jsonify(error='Сорт не знайдено'),404
     return jsonify({'message': 'Сорт видалено'}), 200
 
 

@@ -1,0 +1,24 @@
+#admin-inventory h3 { margin: 1.5rem 0 .75rem; }
+#admin-inventory p { line-height: 1.6; }
+.inventory-admin-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; margin: 1rem 0; }
+.inventory-admin-controls > div { flex: 1; min-width: 180px; }
+.inventory-admin-controls .btn { width: auto; margin: 0; }
+.inventory-admin-controls label, .inventory-admin-editor label { display: block; font-weight: 600; margin: .7rem 0 .35rem; }
+.inventory-admin-controls input, .inventory-admin-controls select, .inventory-admin-editor input, .inventory-admin-editor select, .inventory-admin-editor textarea { width: 100%; padding: .7rem; min-height: 44px; border: 1px solid #bac4d2; border-radius: 8px; font: inherit; }
+.inventory-admin-pallets { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 1rem; }
+.inventory-admin-pallet { background: #f3f6fb; border: 1px solid #d4deea; border-radius: 12px; padding: 1rem; }
+.inventory-admin-pallet.closed { background: #fff3d9; }
+.inventory-admin-pallet.written_off { background: #f4e8e8; }
+.inventory-admin-pallet h4 { margin-bottom: .5rem; }
+.inventory-admin-pallet .btn { width: auto; margin: .3rem .3rem .3rem 0; padding: .6rem .8rem; font-size: .9rem; }
+.inventory-admin-editor { max-width: 600px; text-align: left; }
+.inventory-admin-editor-header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+.inventory-admin-editor-header .btn { width: auto; padding: .5rem .8rem; }
+.inventory-admin-editor .inventory-admin-controls { justify-content: flex-end; }
+#inventory-admin-message.error, #inventory-admin-editor-message.error { color: #9e2020; }
+#inventory-admin-editor-message { margin-top: 1rem; }
+#admin-inventory [hidden] { display: none !important; }
+#inventory-admin-packs td, #inventory-admin-movements td { white-space: normal; overflow-wrap: anywhere; }
+.inventory-admin-positive { color: #136630; font-weight: 700; }
+.inventory-admin-negative { color: #a12424; font-weight: 700; }
+@media(max-width:768px) { .inventory-admin-controls .btn { width: 100%; } #inventory-admin-movements td:last-child { flex-direction: row; } }

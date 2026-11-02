@@ -2,20 +2,25 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Admin Panel - Warehouse System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='admin-mobile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin-presort.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='inventory-admin.css') }}">
+    {% include '_theme.html' %}
 </head>
 <body>
+    {% include '_back_navigation.html' %}
     <nav class="navbar">
         <div class="nav-content">
             <h2>Адмін Панель</h2>
             <div class="nav-right">
                 <a href="/dashboard" class="btn btn-small">Dashboard</a>
+                <a href="/presort" class="btn btn-small">Pre-sort</a>
                 <a href="/logout" class="btn btn-small btn-danger">Вихід</a>
             </div>
         </div>
@@ -23,7 +28,9 @@
 
     <div class="container">
         <div class="admin-tabs">
-            <button class="tab-btn active" onclick="showAdminTab('sort')">Сортування</button>
+            <button class="tab-btn active" onclick="showAdminTab('sort')">SORT: товари й завдання</button>
+            <button class="tab-btn" onclick="showAdminTab('presort')">Pre-sort: картони</button>
+            <button class="tab-btn" onclick="showAdminTab('inventory')">Рухи та залишки</button>
             <button class="tab-btn" onclick="showAdminTab('users')">Користувачі</button>
             <button class="tab-btn" onclick="showAdminTab('activity')">Активність</button>
             <button class="tab-btn" onclick="showAdminTab('ocr')">OCR Логи</button>
@@ -33,10 +40,10 @@
         <!-- Таб сортування (містить дві підвкладки) -->
         <div id="admin-sort" class="admin-tab-content fade-in">
             <div class="sort-subtabs">
-                <button class="sort-subtab-btn active" onclick="showSortSubtab('sorting')">В процесі</button>
-                <button class="sort-subtab-btn" onclick="showSortSubtab('completed')">Завершені</button>
-                <button class="sort-subtab-btn" onclick="showSortSubtab('pallets')">Палети</button>
-                <button class="sort-subtab-btn" onclick="showSortSubtab('create-sort')">Створити сорт</button>
+                <button class="sort-subtab-btn active" onclick="showSortSubtab('sorting')">Товари в роботі</button>
+                <button class="sort-subtab-btn" onclick="showSortSubtab('completed')">Завершені товари</button>
+                <button class="sort-subtab-btn" onclick="showSortSubtab('pallets')">Палети SORT</button>
+                <button class="sort-subtab-btn" onclick="showSortSubtab('create-sort')">Завдання та створення</button>
             </div>
 
             <!-- Підвкладка: В процесі -->
@@ -95,7 +102,8 @@
 
             <!-- Підвкладка: Палети -->
             <div id="admin-pallets" class="sort-subtab-content" style="display: none;">
-                <h2>Палети</h2>
+                <h2>Палети SORT</h2>
+                <p style="margin-bottom: 1rem; color: #666;">Змішані палети розвантаження та їхній вміст переглядайте у вкладці «Pre-sort: картони».</p>
                 <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;">
                     <button class="btn btn-small pallet-filter-btn active" onclick="filterPallets('all')">Всі</button>
                     <button class="btn btn-small pallet-filter-btn" onclick="filterPallets('open')">Відкриті</button>
@@ -111,7 +119,7 @@
                             <tr>
                                 <th>Номер палети</th>
                                 <th>Тип</th>
-                                <th>ICC Код</th>
+                                <th>Товар / локація</th>
                                 <th>Картонів</th>
                                 <th>Користувач</th>
                                 <th>Статус</th>
@@ -131,11 +139,18 @@
 
             <!-- Підвкладка: Створити сорт -->
             <div id="admin-create-sort" class="sort-subtab-content" style="display: none;">
-                <h2>Створити новий сорт</h2>
+                <h2>Завдання SORT та Pre-sort</h2>
+                <p style="margin: 0.75rem 0 1.25rem; color: #666;">Pre-sort збирає картони на змішані палети. Після розвантаження закрийте Pre-sort і переведіть його в SORT, щоб сортувати з підказками про початкові палети.</p>
 
                 <!-- Активні сорти -->
                 <div style="margin-bottom: 2rem;">
-                    <h3 style="margin-bottom: 1rem;">🏭 Активні сорти</h3>
+                    <label for="admin-task-status" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Показати завдання</label>
+                    <select id="admin-task-status" onchange="loadActiveSorts()" style="padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem;">
+                        <option value="all">Усі статуси</option>
+                        <option value="active">Активні</option>
+                        <option value="paused">Призупинені</option>
+                        <option value="closed">Закриті</option>
+                    </select>
                     <div id="active-sorts-list" style="display: grid; gap: 1rem;">
                         <div style="text-align: center; padding: 2rem; background: #f5f5f5; border-radius: 8px;">
                             <div class="spinner"></div>
@@ -148,6 +163,13 @@
                     <h3 style="margin-bottom: 1.5rem;">➕ Створити новий сорт</h3>
 
                     <div class="form-card">
+                        <div class="form-group">
+                            <label for="sort-mode">Режим роботи *</label>
+                            <select id="sort-mode" onchange="updateSortPreview()" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                                <option value="sort">SORT — звичайне сортування</option>
+                                <option value="presort">PRE-SORT — розвантаження по палетах</option>
+                            </select>
+                        </div>
                         <!-- Тип локації -->
                         <div class="form-group">
                             <label>Тип локації *</label>
@@ -162,7 +184,7 @@
                         <!-- Конкретна локація -->
                         <div class="form-group" id="location-select-group" style="display: none;">
                             <label id="location-label">Локація *</label>
-                            <select id="sort-location" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                            <select id="sort-location" onchange="updateSortPreview()" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
                                 <option value="">-- Оберіть локацію --</option>
                             </select>
                         </div>
@@ -180,8 +202,8 @@
                                     <span style="font-weight: 600; color: #9C27B0;">Mix</span>
                                 </label>
                                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; background: #f5f5f5; border-radius: 8px; border: 2px solid transparent;">
-                                    <input type="checkbox" id="type-vevor" value="vevor" onchange="updateSortPreview()">
-                                    <span style="font-weight: 600; color: #0F9D58;">Vevor</span>
+                                    <input type="checkbox" id="type-vevor" value="vevor" disabled>
+                                    <span style="font-weight: 600; color: #666;">Vevor · у розробці</span>
                                 </label>
                             </div>
                         </div>
@@ -204,13 +226,71 @@
                             <div id="sort-preview-text" style="margin-top: 0.5rem; font-size: 1.1rem; color: #0d47a1;"></div>
                         </div>
 
-                        <button class="btn btn-large btn-success" onclick="createNewSort()" style="width: 100%; margin-top: 1.5rem;">
+                        <button id="create-sort-submit" class="btn btn-large btn-success" onclick="createNewSort()" style="width: 100%; margin-top: 1.5rem;">
                             ✓ Створити сорт
                         </button>
                     </div>
                 </div>
             </div>
         </div>
+
+        <section id="admin-presort" class="admin-tab-content" style="display: none;">
+            <h2>Картони з Pre-sort</h2>
+            <div class="admin-presort-controls">
+                <div><label for="admin-presort-job">Завдання</label>
+                    <select id="admin-presort-job"><option value="">Оберіть Pre-sort</option></select></div>
+                <button id="admin-presort-refresh" class="btn btn-primary">Оновити</button>
+            </div>
+            <p id="admin-presort-summary"></p>
+            <div class="admin-presort-controls">
+                <div><label for="admin-presort-view">Вигляд</label>
+                    <select id="admin-presort-view"><option value="products">Список товарів</option><option value="scans">Журнал додавань</option></select></div>
+                <div><label id="admin-presort-query-label" for="admin-presort-query">Пошук за кодом, локацією або PACK</label>
+                    <input id="admin-presort-query" type="search" maxlength="120" placeholder="Наприклад: 4567 або JP-A"></div>
+                <div><label for="admin-presort-type">Тип</label>
+                    <select id="admin-presort-type"><option value="all">Усі типи</option><option value="single">Single</option><option value="mix">Mix</option><option value="vevor">Vevor</option></select></div>
+                <div id="admin-presort-status-field" hidden><label for="admin-presort-status">Записи</label>
+                    <select id="admin-presort-status"><option value="valid">Додані</option><option value="all">Усі, включно зі скасованими</option><option value="undone">Скасовані</option></select></div>
+            </div>
+            <p id="admin-presort-view-note">Додані картони підраховані без скасувань. План — PACK із наклейки; після переведення в SORT це підсумок Pre-sort, а не залишок після відбору.</p>
+            <p id="admin-presort-message" role="status" aria-live="polite">Оберіть завдання для перегляду.</p>
+            <div class="table-container"><table class="data-table">
+                <thead id="admin-presort-head"></thead>
+                <tbody id="admin-presort-scans"></tbody>
+            </table></div>
+            <div class="admin-presort-controls">
+                <button id="admin-presort-prev" class="btn btn-secondary" disabled>Назад</button>
+                <span id="admin-presort-page"></span>
+                <button id="admin-presort-next" class="btn btn-secondary" disabled>Далі</button>
+            </div>
+        </section>
+
+        <section id="admin-inventory" class="admin-tab-content" style="display: none;">
+            <h2>Рухи та залишки</h2>
+            <div class="inventory-admin-controls">
+                <div><label for="inventory-admin-job">Завдання</label><select id="inventory-admin-job"><option value="">Оберіть завдання</option></select></div>
+                <button id="inventory-admin-refresh" class="btn btn-primary">Оновити</button>
+                <button id="inventory-admin-users" class="btn btn-secondary">Створити користувача</button>
+            </div>
+            <p id="inventory-admin-message" role="status" aria-live="polite">Оберіть завдання.</p>
+            <div id="inventory-admin-workspace" hidden>
+                <div class="inventory-admin-controls">
+                    <p id="inventory-admin-summary"></p>
+                    <button id="inventory-admin-settings" class="btn btn-secondary">Налаштувати ICC</button>
+                    <button id="inventory-admin-close-job" class="btn btn-warning">Закрити сорт</button>
+                </div>
+                <p id="inventory-admin-icc-note"></p>
+                <div class="inventory-admin-controls"><div><label for="inventory-admin-search">Пошук за товаром, палетою або працівником</label><input id="inventory-admin-search" type="search" placeholder="Код, букви, номер палети" maxlength="120"></div></div>
+                <h3>Товари</h3>
+                <div class="table-container"><table class="data-table"><thead><tr><th>Товар</th><th>Тип</th><th>Очікується</th><th>Зібрано</th><th>Дії</th></tr></thead><tbody id="inventory-admin-packs"></tbody></table></div>
+                <h3>Палети й поточні залишки</h3>
+                <div id="inventory-admin-pallets" class="inventory-admin-pallets"></div>
+                <h3>Хто працює із завданням</h3>
+                <div id="inventory-admin-workers"></div>
+                <h3>Історія рухів</h3>
+                <div class="table-container"><table class="data-table"><thead><tr><th>Час</th><th>Товар</th><th>Палета</th><th>Рух</th><th>Працівник</th><th>Причина / операція</th><th>Дії</th></tr></thead><tbody id="inventory-admin-movements"></tbody></table></div>
+            </div>
+        </section>
 
         <!-- Таб користувачів -->
         <div id="admin-users" class="admin-tab-content" style="display: none;">
@@ -370,18 +450,31 @@
     <div id="toast-message" class="toast-message"></div>
 
     <!-- Модальне вікно підтвердження (замість confirm) -->
-    <div id="confirm-modal" class="modal" style="display: none;">
+    <div id="confirm-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
         <div class="modal-content fade-in" style="max-width: 450px;">
             <h2 id="confirm-title" style="color: #dc3545; margin-bottom: 1rem;">⚠️ Підтвердження</h2>
             <p id="confirm-message" style="font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem; color: #333;"></p>
             <div style="display: flex; gap: 1rem;">
-                <button class="btn btn-secondary" onclick="closeConfirmModal()" style="flex: 1;">Скасувати</button>
-                <button class="btn btn-danger" onclick="confirmAction()" style="flex: 1;">Підтвердити</button>
+                <button id="confirm-no-btn" class="btn btn-secondary" onclick="closeConfirmModal()" style="flex: 1;">Ні</button>
+                <button id="confirm-yes-btn" class="btn btn-danger" onclick="confirmAction()" style="flex: 1;">Так</button>
             </div>
         </div>
     </div>
 
+    <div id="inventory-admin-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="inventory-admin-editor-title">
+        <div class="modal-content inventory-admin-editor">
+            <div class="inventory-admin-editor-header"><h2 id="inventory-admin-editor-title"></h2><button id="inventory-admin-editor-close" type="button" class="btn btn-danger" aria-label="Закрити редактор">✕</button></div>
+            <p id="inventory-admin-editor-help"></p>
+            <form id="inventory-admin-editor-form">
+                <div id="inventory-admin-editor-fields"></div>
+                <p id="inventory-admin-editor-message" role="status" aria-live="polite"></p>
+                <div class="inventory-admin-controls"><button id="inventory-admin-editor-cancel" type="button" class="btn btn-secondary">Скасувати</button><button id="inventory-admin-editor-save" type="submit" class="btn btn-success">Зберегти</button></div>
+            </form>
+        </div>
+    </div>
     <script src="{{ url_for('static', filename='admin.js') }}"></script>
+    <script src="{{ url_for('static', filename='admin-presort.js') }}"></script>
+    <script src="{{ url_for('static', filename='inventory-admin.js') }}"></script>
     <script src="{{ url_for('static', filename='admin-mobile-helper.js') }}"></script>
 </body>
 </html>

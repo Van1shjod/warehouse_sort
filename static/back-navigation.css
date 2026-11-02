@@ -1,0 +1,9 @@
+body.has-site-back { padding-top: max(64px, calc(env(safe-area-inset-top) + 58px)); }
+.site-back-button { position: fixed; left: max(12px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); z-index: 20050; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border: 1px solid #ccd4e0; border-radius: 12px; background: #fff; color: #243b67; box-shadow: 0 2px 10px #0002; font: 600 16px/1.2 system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+.site-back-button .site-back-icon { font-size: 26px; line-height: 1; }
+.site-back-button:focus-visible { outline: 3px solid #667eea; outline-offset: 3px; }
+.site-back-button:disabled { opacity: .55; cursor: default; }
+body.has-site-back .modal { padding-top: 70px; padding-top: max(70px, calc(env(safe-area-inset-top) + 60px)); }
+body.has-site-back .modal-content { max-height: calc(100dvh - 90px); overflow-y: auto; }
+.site-back-status { position: fixed; top: 64px; left: 12px; right: 12px; z-index: 20051; width: fit-content; padding: 8px 12px; border-radius: 8px; background: #fff3cd; color: #614900; font: 16px/1.5 system-ui, sans-serif; }
+.site-back-status:empty { display: none; }

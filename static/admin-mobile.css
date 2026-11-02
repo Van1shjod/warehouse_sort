@@ -81,6 +81,11 @@
 }
 
 /* Таблиці - карточний вигляд для мобільного */
+.admin-task-card { background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 2px 8px #0001; border-left: 4px solid #667eea; overflow-wrap: anywhere; }
+.admin-task-card h4 { margin: 0 0 .5rem; font-size: 1.15rem; }
+.admin-task-card p { margin: .45rem 0; }
+.admin-task-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.admin-task-actions .btn { width: auto; }
 @media (max-width: 768px) {
     .table-container {
         overflow-x: visible;

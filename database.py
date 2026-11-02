@@ -528,7 +528,7 @@ class Database:
                 SELECT s.*, u.username as created_by_name
                 FROM sorts s
                 LEFT JOIN users u ON s.created_by = u.id
-                WHERE s.status = ?
+                WHERE s.status = ? AND s.status <> 'deleted'
                 ORDER BY s.unload_date DESC, s.created_at DESC
             """, (status,))
         else:
@@ -536,6 +536,7 @@ class Database:
                 SELECT s.*, u.username as created_by_name
                 FROM sorts s
                 LEFT JOIN users u ON s.created_by = u.id
+                WHERE s.status <> 'deleted'
                 ORDER BY s.unload_date DESC, s.created_at DESC
             """)
         sorts = [dict(row) for row in cursor.fetchall()]
@@ -550,7 +551,7 @@ class Database:
             SELECT s.*, u.username as created_by_name
             FROM sorts s
             LEFT JOIN users u ON s.created_by = u.id
-            WHERE s.id = ?
+            WHERE s.id = ? AND s.status <> 'deleted'
         """, (sort_id,))
         sort = cursor.fetchone()
         conn.close()
@@ -582,12 +583,13 @@ class Database:
             return False
 
         params.append(sort_id)
-        query = f"UPDATE sorts SET {', '.join(updates)} WHERE id = ?"
+        query = f"UPDATE sorts SET {', '.join(updates)} WHERE id = ? AND status <> 'deleted'"
 
         cursor.execute(query, params)
+        changed = cursor.rowcount > 0
         conn.commit()
         conn.close()
-        return True
+        return changed
 
     def update_sort_status(self, sort_id, status):
         """Оновити статус сорту"""
@@ -595,24 +597,53 @@ class Database:
         cursor = conn.cursor()
         if status == 'closed':
             cursor.execute(
-                "UPDATE sorts SET status = ?, closed_at = ? WHERE id = ?",
+                "UPDATE sorts SET status = ?, closed_at = ? WHERE id = ? AND status <> 'deleted'",
                 (status, datetime.now(), sort_id)
             )
         else:
             cursor.execute(
-                "UPDATE sorts SET status = ? WHERE id = ?",
+                "UPDATE sorts SET status = ?, closed_at = NULL WHERE id = ? AND status <> 'deleted'",
                 (status, sort_id)
             )
         conn.commit()
         conn.close()
 
-    def delete_sort(self, sort_id):
-        """Видалити сорт"""
+    def delete_sort(self, sort_id, user_id):
+        """Remove a task from work without deleting its immutable accounting."""
         conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM sorts WHERE id = ?", (sort_id,))
-        conn.commit()
-        conn.close()
+        try:
+            conn.execute('BEGIN IMMEDIATE')
+            row = conn.execute('SELECT * FROM sorts WHERE id=?', (sort_id,)).fetchone()
+            if not row:
+                return False
+            if row['status'] == 'deleted':
+                return True
+            conn.execute("UPDATE sorts SET status='deleted',closed_at=CURRENT_TIMESTAMP WHERE id=?", (sort_id,))
+            conn.execute('''UPDATE pallets SET is_closed=1,closed_at=COALESCE(closed_at,CURRENT_TIMESTAMP)
+                WHERE icc_code_id IN (SELECT id FROM icc_codes WHERE sort_id=?)''', (sort_id,))
+            tables = {r['name'] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            if 'presort_jobs' in tables:
+                source = conn.execute('SELECT container_id FROM presort_jobs WHERE sort_id=?', (sort_id,)).fetchone()
+                if source:
+                    conn.execute('''UPDATE presort_pallets SET closed_at=COALESCE(closed_at,CURRENT_TIMESTAMP)
+                        WHERE container_id=?''', (source['container_id'],))
+                    conn.execute("UPDATE containers SET status='completed' WHERE id=?", (source['container_id'],))
+            if 'inventory_pallets' in tables:
+                conn.execute('''UPDATE inventory_pallets SET state='closed' WHERE state='open' AND container_id IN
+                    (SELECT id FROM inventory_contexts WHERE sort_id=?)''', (sort_id,))
+                conn.execute('UPDATE inventory_sessions SET is_active=0 WHERE sort_id=?', (sort_id,))
+            if 'user_container_sessions' in tables:
+                conn.execute('''UPDATE user_container_sessions SET is_active=0
+                    WHERE sort_id=? AND is_active=1''', (sort_id,))
+            conn.execute('INSERT INTO activity_log(user_id,action,details) VALUES(?,?,?)',
+                         (user_id,'delete_sort',f'Видалено {row["mode"].upper()} #{sort_id}: {row["name"]}'))
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     def get_active_sorts_for_user(self):
         """Отримати активні сорти для вибору користувачем"""

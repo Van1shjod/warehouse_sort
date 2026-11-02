@@ -2,12 +2,14 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="mobile-web-app-capable" content="yes">
     <title>Lider Panel - Warehouse System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% include '_theme.html' %}
 </head>
 <body>
+    {% include '_back_navigation.html' %}
     <nav class="navbar">
         <div class="nav-content">
             <h2>📊 Lider Панель</h2>
@@ -201,12 +203,11 @@
                     <input type="text" id="new-sort-name" placeholder="Наприклад: Зона А, Рампа 5" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label>Тип *</label>
+                    <label>Тип картонів *</label>
                     <select id="new-sort-type" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
-                        <option value="zone">Зона</option>
-                        <option value="ramp">Рампа</option>
-                        <option value="container">Контейнер</option>
-                        <option value="other">Інше</option>
+                        <option value="single">Single</option>
+                        <option value="mix">Mix</option>
+                        <option value="single,mix">Single / Mix</option>
                     </select>
                 </div>
                 <div class="form-group">

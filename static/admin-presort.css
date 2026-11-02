@@ -1,0 +1,12 @@
+.admin-presort-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; margin: 1rem 0; }
+.admin-presort-controls > div { flex: 1; min-width: 180px; }
+.admin-presort-controls label { display: block; margin-bottom: .4rem; font-weight: 600; }
+.admin-presort-controls input, .admin-presort-controls select { width: 100%; padding: .7rem; min-height: 44px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
+#admin-presort-message.error { color: #a61919; }
+#admin-presort-scans tr.cancelled { background: #fff0e2; color: #70451b; }
+#admin-presort-scans td { white-space: normal; overflow-wrap: anywhere; }
+#admin-presort-status-field[hidden] { display: none; }
+@media(max-width:768px) {
+    #admin-presort-scans td:last-child { flex-direction: row; margin-top: 0; padding-top: .75rem; border-top: none; }
+    #admin-presort-scans td:last-child::before { display: block; }
+}

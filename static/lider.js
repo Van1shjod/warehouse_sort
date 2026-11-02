@@ -1,4 +1,5 @@
 // Показати таб Lider
+const liderText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 function showLiderTab(tab) {
     const tabs = document.querySelectorAll('.admin-tab-content');
     const btns = document.querySelectorAll('.tab-btn');
@@ -6,8 +7,10 @@ function showLiderTab(tab) {
     tabs.forEach(t => t.style.display = 'none');
     btns.forEach(b => b.classList.remove('active'));
 
-    document.getElementById('lider-' + tab).style.display = 'block';
-    event.target.classList.add('active');
+    const panel=document.getElementById('lider-' + tab);
+    if(!panel)return;
+    panel.style.display = 'block';
+    document.querySelector(`.tab-btn[onclick*="'${tab}'"]`)?.classList.add('active');
 
     if (tab === 'sorts') {
         loadSorts();
@@ -45,7 +48,7 @@ async function loadSorts() {
                 workingUsersHTML = sort.working_users.map(u => {
                     const time = new Date(u.started_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
                     return `<div style="background: #e3f2fd; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                        👤 <strong>${u.username}</strong> <span style="color: #666; font-size: 0.85rem;">(з ${time})</span>
+                        👤 <strong data-no-translate>${liderText(u.username)}</strong> <span style="color: #666; font-size: 0.85rem;">(з ${time})</span>
                     </div>`;
                 }).join('');
             } else {
@@ -80,10 +83,9 @@ async function loadSorts() {
 
             // Тип
             const typeLabels = {
-                'zone': '🏢 Зона',
-                'ramp': '🚛 Рампа',
-                'container': '📦 Контейнер',
-                'other': '📋 Інше'
+                'single': 'Single',
+                'mix': 'Mix',
+                'single,mix': 'Single / Mix'
             };
             const typeLabel = typeLabels[sort.type] || sort.type;
 
@@ -103,20 +105,21 @@ async function loadSorts() {
                         '<button class="btn btn-small btn-success" onclick="updateSortStatus(' + sort.id + ', \'active\')">▶ Активувати</button>' : ''}
                     ${sort.status !== 'closed' ?
                         '<button class="btn btn-small btn-primary" onclick="updateSortStatus(' + sort.id + ', \'closed\')">✓ Закрити</button>' : ''}
-                    <button class="btn btn-small btn-danger" onclick="deleteSortConfirm(' + sort.id + ', \'' + sort.name.replace(/'/g, "\\'") + '\')">🗑 Видалити</button>
+                    <button class="btn btn-small btn-danger" data-delete-sort>🗑 Видалити</button>
                 </div>
             `;
 
             row.innerHTML = `
-                <td><strong style="font-size: 1.1rem;">${sort.name}</strong></td>
-                <td>${typeLabel}</td>
+                <td><strong data-no-translate style="font-size: 1.1rem;">${liderText(sort.name)}</strong></td>
+                <td>${liderText(typeLabel)}</td>
                 <td><strong>${unloadDate}</strong></td>
-                <td style="max-width: 200px; white-space: pre-wrap; font-size: 0.9rem;">${sort.description || '<span style="color: #999;">—</span>'}</td>
+                <td style="max-width: 200px; white-space: pre-wrap; font-size: 0.9rem;">${liderText(sort.description) || '<span style="color: #999;">—</span>'}</td>
                 <td>${workingUsersHTML}</td>
                 <td>${progressHTML}</td>
                 <td>${statusBadge}</td>
                 <td>${actionsHTML}</td>
             `;
+            row.querySelector('[data-delete-sort]').onclick=()=>deleteSortConfirm(sort.id,sort.name);
             tbody.appendChild(row);
         });
     } catch (error) {
@@ -141,7 +144,7 @@ function showCreateSortModal() {
 function closeCreateSortModal() {
     document.getElementById('create-sort-modal').style.display = 'none';
     document.getElementById('new-sort-name').value = '';
-    document.getElementById('new-sort-type').value = 'zone';
+    document.getElementById('new-sort-type').value = 'single';
     document.getElementById('new-sort-date').value = '';
     document.getElementById('new-sort-description').value = '';
 }
@@ -278,7 +281,7 @@ async function loadContainers() {
                 workingUsersHTML = container.working_users.map(u => {
                     const time = new Date(u.started_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
                     return `<div style="background: #e3f2fd; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                        👤 <strong>${u.username}</strong> <span style="color: #666; font-size: 0.85rem;">(з ${time})</span>
+                        👤 <strong data-no-translate>${liderText(u.username)}</strong> <span style="color: #666; font-size: 0.85rem;">(з ${time})</span>
                     </div>`;
                 }).join('');
             } else {
@@ -308,7 +311,7 @@ async function loadContainers() {
             `;
 
             row.innerHTML = `
-                <td><strong style="font-size: 1.1rem;">${container.container_number}</strong></td>
+                <td><strong style="font-size: 1.1rem;">${liderText(container.container_number)}</strong></td>
                 <td>${workingUsersHTML}</td>
                 <td>${statusBadge}</td>
                 <td>${new Date(container.created_at).toLocaleString('uk-UA')}</td>
@@ -436,11 +439,11 @@ async function loadPallets() {
             const statusClass = pallet.is_closed ? 'badge-success' : 'badge-warning';
 
             row.innerHTML = `
-                <td>${pallet.pallet_number}</td>
-                <td>${icc ? icc.icc_code : '-'}</td>
+                <td data-no-translate>${liderText(pallet.pallet_number)}</td>
+                <td data-no-translate>${icc ? liderText(icc.icc_code) : '-'}</td>
                 <td>${pallet.type.toUpperCase()}</td>
                 <td>${pallet.cartons_count}</td>
-                <td>${user ? user.username : '-'}</td>
+                <td data-no-translate>${user ? liderText(user.username) : '-'}</td>
                 <td><span class="badge ${statusClass}">${statusText}</span></td>
                 <td>${new Date(pallet.created_at).toLocaleString('uk-UA')}</td>
             `;
@@ -478,7 +481,7 @@ async function loadICCCodes() {
             const statusClass = icc.is_completed ? 'badge-success' : 'badge-info';
 
             row.innerHTML = `
-                <td><strong>${icc.icc_code}</strong></td>
+                <td><strong data-no-translate>${liderText(icc.icc_code)}</strong></td>
                 <td>${icc.type.toUpperCase()}</td>
                 <td>${progressBar}</td>
                 <td>${progressText}</td>
@@ -508,7 +511,7 @@ async function loadUsersActivity() {
                             user.role === 'lider' ? 'Lider' : 'User';
 
             row.innerHTML = `
-                <td>${user.username}</td>
+                <td data-no-translate>${liderText(user.username)}</td>
                 <td><span class="badge badge-${user.role}">${roleLabel}</span></td>
                 <td><strong>${user.total_cartons}</strong> картонів</td>
                 <td>${new Date(user.created_at).toLocaleString('uk-UA')}</td>

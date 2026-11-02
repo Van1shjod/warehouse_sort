@@ -2,13 +2,16 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Dashboard - Warehouse System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='collection.css') }}">
+    {% include '_theme.html' %}
 </head>
-<body>
+<body class="dashboard-page">
+    {% include '_back_navigation.html' %}
     <nav class="navbar">
         <div class="nav-content">
             <h2>Warehouse System</h2>
@@ -39,7 +42,6 @@
         <div id="sort-selection" style="display: none; margin-top: 2rem;">
             <div class="work-card fade-in">
                 <h2 style="text-align: center; margin-bottom: 1rem;">Виберіть сорт зони/рампи</h2>
-                <p style="text-align: center; color: #666; margin-bottom: 1.5rem;">Оберіть, з яким сортом ви будете працювати сьогодні</p>
                 <div id="sorts-list" style="display: grid; gap: 1rem;"></div>
                 <button class="btn btn-secondary" onclick="cancelSortSelection()" style="width: 100%; margin-top: 1rem;">Скасувати</button>
             </div>
@@ -48,16 +50,21 @@
         <!-- Головна кнопка (без статистики) -->
         <div class="main-actions" style="margin-top: 3rem;">
             <button class="btn btn-large btn-primary" onclick="checkContainerAndShowSortMenu()">SORT</button>
+            <a href="/presort" class="btn btn-large btn-success">PRE-SORT</a>
         </div>
+        <section id="sort-pending-notice" hidden style="padding: 1rem; margin: 1rem 0; background: #fff3cd; border-radius: 12px;" role="status">
+            <p id="sort-pending-text"></p>
+            <button id="sort-retry-btn" type="button" class="btn btn-warning" onclick="retryPendingSortSave()">Повторити збереження</button>
+        </section>
 
         <!-- Меню вибору типу -->
         <div id="sort-menu" class="modal">
             <div class="modal-content fade-in">
                 <h2>Виберіть тип</h2>
                 <div class="type-buttons">
-                    <button class="btn btn-large btn-type" onclick="selectType('single')">Single</button>
-                    <button class="btn btn-large btn-type" onclick="selectType('mix')">Mix</button>
-                    <button class="btn btn-large btn-type" onclick="selectType('vevor')">Vevor</button>
+                    <button id="sort-type-single-btn" class="btn btn-large btn-type" onclick="selectType('single')">Single</button>
+                    <button id="sort-type-mix-btn" class="btn btn-large btn-type" onclick="selectType('mix')">Mix</button>
+                    <button id="sort-type-vevor-btn" class="btn btn-large btn-type" onclick="selectType('vevor')">Vevor</button>
                 </div>
                 <button class="btn btn-secondary" onclick="closeSortMenu()">Скасувати</button>
             </div>
@@ -67,33 +74,75 @@
         <div id="work-area" style="display: none;">
             <div class="work-card fade-in">
                 <div class="work-header">
-                    <h2>Тип: <span id="current-type"></span></h2>
-                    <button class="btn btn-danger" onclick="closeWorkArea()">Завершити</button>
+                    <h2><span id="work-sort-name"></span> · <span id="current-type"></span></h2>
+                    <button class="btn btn-secondary btn-small" onclick="closeWorkArea()">Завершити</button>
                 </div>
+                <p id="work-steps" hidden></p>
+                <aside id="collection-active-label" class="collection-active-label" hidden aria-live="polite"></aside>
+                <section id="collection-panel" class="collection-panel" hidden>
+                    <div class="collection-step-header"><h3 id="collection-heading">Оберіть товар</h3>
+                        <div id="collection-order-row" hidden>
+                            <label for="collection-order" class="collection-sr-only">Порядок обходу палет</label>
+                            <select id="collection-order" class="collection-order" aria-label="Порядок обходу палет"><option value="asc">↑ За зростанням</option><option value="desc">↓ За спаданням</option></select>
+                            <span id="collection-order-help" hidden></span>
+                        </div>
+                    </div>
+                    <p id="collection-summary" class="collection-status"></p>
+                    <p id="collection-message" role="status" aria-live="polite"></p>
+                    <span id="collection-identify" hidden></span>
+                    <button id="collection-retry" class="btn btn-warning" type="button" hidden>Повторити збереження</button>
+                    <div id="collection-location" hidden>
+                        <p class="collection-eyebrow">Палета</p>
+                        <p id="collection-source-title" class="collection-location"></p>
+                        <p id="collection-source-count"></p>
+                        <form id="collection-source-form">
+                            <label for="collection-source-number">Введіть номер палети</label>
+                            <input id="collection-source-number" required maxlength="80" autocomplete="off">
+                            <button type="submit" class="btn btn-success">Підтвердити палету</button>
+                        </form>
+                    </div>
+                    <div id="collection-confirm" class="collection-sr-only" hidden>
+                        <h3 id="collection-confirm-title"></h3>
+                        <p id="collection-hint" class="collection-hint"></p>
+                    </div>
+                    <div id="collection-empty" hidden><button id="collection-next-item" class="btn btn-primary" type="button">Обрати наступний товар</button></div>
+                </section>
+
+                <section id="presort-source-area" hidden style="padding: 1rem; margin-bottom: 1.5rem; background: #eaf2ff; border-radius: 12px;">
+                    <h3>Де знайти товар: палети з Pre-sort</h3>
+                    <p>Введіть або відскануйте наклейку, щоб знайти такий самий товар.</p>
+                    <div id="presort-source-results" aria-live="polite"></div>
+                    <small>Кількість на момент завершення Pre-sort. Відбір із палет тут не списується.</small>
+                </section>
+                <section id="presort-last-source" hidden style="padding: 1rem; margin-bottom: 1.5rem; background: #eaf7eb; border-radius: 12px;">
+                    <h3>Останній доданий товар: <span id="presort-last-label"></span></h3>
+                    <div id="presort-last-results"></div>
+                    <small>Початкове розміщення у Pre-sort. Відбір із цих палет тут не списується.</small>
+                </section>
 
                 <!-- Новий єдиний інтерфейс для Single -->
                 <div id="single-input-section" style="display: none;">
                     <!-- Кнопка камери зверху -->
-                    <div style="text-align: center; margin-bottom: 2rem;">
+                    <div class="label-camera-action">
                         <button id="camera-scan-btn" class="btn btn-large btn-primary" onclick="openCameraScanner()">
-                            📷 Сканувати наклейку
+                            📷 Сканувати
                         </button>
                     </div>
 
                     <div class="form-card">
                         <div class="form-group">
-                            <label>ICC Код (4 цифри)</label>
+                            <label for="icc-code-input">ICC код</label>
                             <input type="text" id="icc-code-input" placeholder="Введіть 4 цифри" autocomplete="off" maxlength="4" pattern="[0-9]*" inputmode="numeric">
                         </div>
                         <div class="form-group">
-                            <label>Загальна кількість (PACK)</label>
+                            <label for="cartons-count-input">PACK</label>
                             <input type="number" id="cartons-count-input" placeholder="Кількість картонів" min="1" autocomplete="off">
                         </div>
                         <div class="form-group">
-                            <label>Кодові букви (локація)</label>
+                            <label for="location-code-input">Кодові букви</label>
                             <input type="text" id="location-code-input" placeholder="Наприклад: IZ-A" autocomplete="off" style="text-transform: uppercase;">
                         </div>
-                        <button class="btn btn-large btn-success" onclick="submitSingleData()" style="width: 100%; margin-top: 0.5rem;">
+                        <button class="btn btn-large btn-success" data-label-submit onclick="submitSingleData()" style="width: 100%; margin-top: 0.5rem;">
                             Продовжити ➜
                         </button>
                     </div>
@@ -102,28 +151,36 @@
                 <!-- Інтерфейс для MIX -->
                 <div id="mix-input-section" style="display: none;">
                     <!-- Кнопка камери зверху -->
-                    <div style="text-align: center; margin-bottom: 2rem;">
+                    <div class="label-camera-action">
                         <button class="btn btn-large btn-primary" onclick="openCameraScannerMix()">
-                            📷 Сканувати MIX наклейку
+                            📷 Сканувати
                         </button>
                     </div>
 
                     <div class="form-card">
                         <div class="form-group">
-                            <label>ICC Код MIX (наприклад: D980989)</label>
+                            <label for="mix-icc-code-input">ICC код Mix</label>
                             <input type="text" id="mix-icc-code-input" placeholder="Введіть код з наклейки" autocomplete="off" maxlength="10" style="text-transform: uppercase;">
                         </div>
-                        <button class="btn btn-large btn-success" onclick="submitMixData()" style="width: 100%; margin-top: 0.5rem;">
-                            Додати MIX картон ➜
+                        <button class="btn btn-large btn-success" data-label-submit onclick="submitMixData()" style="width: 100%; margin-top: 0.5rem;">
+                            Продовжити ➜
                         </button>
                     </div>
 
-                    <div style="margin-top: 1rem; text-align: center;">
+                    <div id="mix-clear-action" style="margin-top: 1rem; text-align: center;">
                         <button class="btn btn-secondary" onclick="startNewMixPallet()" style="width: 100%;">
-                            🆕 Нова палета
+                            Очистити код
                         </button>
                     </div>
                 </div>
+                <details id="collection-tools" class="collection-tools" hidden>
+                    <summary>Інші дії</summary>
+                    <div class="collection-actions">
+                        <button id="collection-refresh" class="btn btn-secondary" type="button" hidden>Оновити залишки</button>
+                        <button id="collection-undo" class="btn btn-secondary" type="button" hidden>Скасувати останній картон</button>
+                        <button id="collection-exit" class="btn btn-secondary" type="button">Змінити спосіб</button>
+                    </div>
+                </details>
             </div>
         </div>
     </div>
@@ -131,14 +188,18 @@
     <!-- Модальне вікно "Це новий товар?" -->
     <div id="new-item-modal" class="modal" style="display: none;">
         <div class="modal-content fade-in">
-            <h2>⚠️ Увага</h2>
+            <h2>Збір цього товару завершено</h2>
             <p style="font-size: 1.1rem; margin: 1.5rem 0;">
-                Товар з таким кодом вже існує і завершений.<br>
-                <strong>Це новий товар?</strong>
+                Кількість PACK для цієї наклейки вже зібрана.<br>
+                <strong>Це окрема нова партія з такою самою наклейкою?</strong>
             </p>
+            <div id="completed-pallet-row" hidden style="padding: 1rem; background: #fff3cd; border-radius: 8px;">
+                <p>Попередня палета SORT: <strong id="completed-pallet-number"></strong></p>
+                <button id="close-completed-pallet" class="btn btn-warning" onclick="closeCompletedPallet()">Закрити попередню палету</button>
+            </div>
             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                 <button class="btn btn-large btn-secondary" onclick="cancelNewItem()" style="flex: 1;">Ні</button>
-                <button class="btn btn-large btn-primary" onclick="confirmNewItem()" style="flex: 1;">Так, новий товар</button>
+                <button class="btn btn-large btn-primary" onclick="confirmNewItem()" style="flex: 1;">Так, нова партія</button>
             </div>
         </div>
     </div>
@@ -146,7 +207,10 @@
     <!-- Модальне вікно підтвердження (після "Продовжити") -->
     <div id="confirmation-modal" class="modal" style="display: none;">
         <div class="modal-content fade-in">
-            <h2>Скільки є зараз?</h2>
+            <h2>Скільки картонів додаємо зараз?</h2>
+            <section id="presort-confirm-source" hidden style="text-align: left; padding: 1rem; margin: 1rem 0; background: #eaf2ff; border-radius: 8px;">
+                <h3>Звідки взяти: палети Pre-sort</h3><div id="presort-confirm-results"></div>
+            </section>
 
             <!-- Прогрес якщо товар вже існує -->
             <div id="progress-info-modal2" style="display: none; background: #e3f2fd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #2196F3;">
@@ -175,7 +239,10 @@
     <!-- Модальне вікно локації (третє вікно) -->
     <div id="location-modal" class="modal" style="display: none;">
         <div class="modal-content fade-in">
-            <h2>Локація (палета)</h2>
+            <h2>Куди складаємо: палета SORT</h2>
+            <section id="presort-location-source" hidden style="text-align: left; padding: 1rem; margin: 1rem 0; background: #eaf2ff; border-radius: 8px;">
+                <h3>Звідки взяти: палети Pre-sort</h3><div id="presort-location-results"></div>
+            </section>
 
             <!-- Прогрес -->
             <div id="progress-info-modal3" style="display: none; background: #e3f2fd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #2196F3;">
@@ -202,7 +269,7 @@
 
             <div class="form-card" style="margin-top: 1.5rem;">
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label>Номер палети</label>
+                    <label>Номер палети SORT, на яку додаємо</label>
                     <input type="text" id="pallet-location-input" placeholder="Введіть або відскануйте" autocomplete="off" style="text-transform: uppercase;">
                 </div>
             </div>
@@ -249,6 +316,23 @@
     </div>
 
     <!-- Toast повідомлення -->
+    <section id="collection-resume" class="container collection-panel" hidden>
+        <p>Є незавершене збирання «Один товар».</p>
+        <button id="collection-resume-button" class="btn btn-primary" type="button">Продовжити збирання</button>
+    </section>
+    <div id="collection-mode" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="collection-mode-title">
+        <div class="modal-content">
+            <h2 id="collection-mode-title">Спосіб сортування</h2>
+            <div class="collection-actions">
+                <button type="button" class="btn btn-primary" onclick="chooseCollectionMode('one')">Один товар</button>
+                <button type="button" class="btn btn-success" onclick="chooseCollectionMode('different')">Різні товари</button>
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="collectionBackHandler()">До вибору типу</button>
+        </div>
+    </div>
+    <div id="vevor-development" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="vevor-development-title">
+        <div class="modal-content collection-development"><h2 id="vevor-development-title">🚧 У розробці</h2><p>Сортування Vevor буде доступне пізніше.</p><button type="button" class="btn btn-secondary" onclick="collectionBackHandler()">До вибору типу</button></div>
+    </div>
     <div id="toast-message" class="toast-message"></div>
 
     <script>
@@ -256,5 +340,7 @@
         const userRole = "{{ user['role'] }}";
     </script>
     <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='sort-presort.js') }}"></script>
+    <script src="{{ url_for('static', filename='collection.js') }}"></script>
 </body>
 </html>

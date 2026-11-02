@@ -47,7 +47,7 @@ function addMobileTableLabels() {
     // Таблиця палет
     const palletsTable = document.querySelector('#pallets-table-body');
     if (palletsTable) {
-        const labels = ['Номер палети', 'Тип', 'ICC Код', 'Картонів', 'Користувач', 'Статус', 'Створено'];
+        const labels = ['Номер палети', 'Тип', 'Товар / локація', 'Картонів', 'Працівник', 'Статус', 'Створено'];
         palletsTable.querySelectorAll('tr').forEach(row => {
             row.querySelectorAll('td').forEach((td, index) => {
                 if (labels[index]) td.setAttribute('data-label', labels[index]);

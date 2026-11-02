@@ -1,0 +1,23 @@
+.inventory-flow-active #presort-source-area, .inventory-flow-active #presort-last-source, .inventory-flow-active #presort-confirm-source, .inventory-flow-active #presort-location-source { display: none !important; }
+.inventory-modal .modal-content { max-width: 660px; text-align: left; }
+.inventory-modal h2 { margin-bottom: 1rem; overflow-wrap: anywhere; }
+.inventory-modal p { margin: .6rem 0; }
+.inventory-modal label { display: block; font-weight: 600; margin: .75rem 0 .4rem; }
+.inventory-modal input { width: 100%; padding: .8rem; min-height: 48px; border: 1px solid #b9c3ce; border-radius: 8px; font-size: 1rem; }
+.inventory-modal input[type=checkbox] { width: 22px; min-height: 22px; margin-right: .5rem; vertical-align: middle; }
+.inventory-modal button { margin-top: .6rem; }
+.inventory-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin-bottom: 1rem; }
+.inventory-stats > div { padding: .8rem; background: #eaf2ff; border-radius: 10px; }
+.inventory-stats strong { display: block; font-size: 1.6rem; }
+.inventory-pallet { display: flex; flex-direction: column; gap: .3rem; padding: .8rem; background: #f3f6fb; border-radius: 8px; margin: .6rem 0; }
+.inventory-pallet span { font-size: .9rem; color: #586474; }
+.inventory-pick-row { padding: .75rem 0; border-bottom: 1px solid #dde3eb; }
+.inventory-note { padding: .8rem; background: #fff3cd; border-radius: 8px; margin: .75rem 0; }
+.inventory-complete { background: #e6f6e9; color: #176829; padding: .8rem; border-radius: 8px; font-weight: 700; }
+.inventory-actions { display: flex; gap: .7rem; flex-wrap: wrap; }
+.inventory-actions > .btn { flex: 1; min-width: 140px; }
+.inventory-notice { position: fixed; bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 20060; width: max-content; max-width: calc(100vw - 24px); padding: .8rem 1rem; border-radius: 10px; color: #164a77; background: #e9f4ff; box-shadow: 0 3px 16px #0003; pointer-events: none; }
+.inventory-notice.error { background: #ffe9e9; color: #8b1919; }
+.inventory-notice:empty { display: none; }
+.inventory-modal [hidden], .inventory-flow-active #inventory-pending[hidden], .inventory-flow-active #inventory-legacy[hidden], #inventory-last-action[hidden] { display: none !important; }
+@media(max-width:600px) { .inventory-modal .modal-content { padding: 1.1rem; } .inventory-actions { flex-direction: column; gap: 0; } }

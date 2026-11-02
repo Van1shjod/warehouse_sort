@@ -1,0 +1,15 @@
+import {chromium} from 'file:///C:/Users/Lenovo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import {fileURLToPath} from 'node:url';
+const browser=await chromium.launch({channel:'msedge',headless:true});
+const page=await browser.newPage({viewport:{width:1280,height:1000}});page.on('dialog',d=>d.accept());
+const go=async p=>{await page.goto('http://127.0.0.1:5066'+p);await page.waitForTimeout(700)};
+const shot=async(name,selector)=>{await page.waitForTimeout(500);await (selector?page.locator(selector):page).screenshot({path:fileURLToPath(new URL('./shots/'+name+'.png',import.meta.url)),animations:'disabled'});console.log(name)};
+await go('/_presentation/enter/1');await go('/admin');await page.evaluate(()=>showSortSubtab('create-sort'));
+await page.locator('#sort-mode').selectOption('presort');await page.locator('#sort-location-type').selectOption('rampa');await page.locator('#sort-location').selectOption({label:'Rampa 3'});await page.locator('#type-single').check();await page.locator('#type-mix').check();await page.setViewportSize({width:1280,height:1900});await page.evaluate(()=>window.scrollTo(0,0));await shot('create-sort','#admin-create-sort > div:nth-of-type(2)');
+await page.setViewportSize({width:1280,height:1000});await go('/admin');await page.evaluate(()=>showAdminTab('ocr'));await page.waitForTimeout(700);await page.evaluate(()=>showOcrDetail(0));await shot('ocr-detail','#ocr-detail-modal .modal-content');
+await go('/admin');await page.evaluate(()=>openEditICCModal(1));await shot('edit-icc','#edit-icc-modal .modal-content');
+await go('/lider');await page.getByRole('button',{name:'Контейнери',exact:false}).click();await shot('containers');
+await page.getByRole('button',{name:'Сорти',exact:false}).first().click();await shot('lider-sorts');
+await go('/_presentation/enter/2');await go('/presort');await page.locator('#container').selectOption('2');await shot('presort-form','#workspace > section:first-of-type');await shot('presort-pallets','#workspace > section:last-of-type');
+await go('/dashboard');await page.evaluate(()=>selectSort(4));await page.evaluate(()=>selectType('single'));await page.locator('#icc-code-input').fill('4567');await page.locator('#cartons-count-input').fill('30');await page.locator('#location-code-input').fill('JP-A');await page.waitForTimeout(2800);await shot('source','#presort-source-area');
+await browser.close();

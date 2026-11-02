@@ -1425,12 +1425,13 @@ textarea:focus-visible {
 
 .toast-message {
     position: fixed;
-    top: 50%;
+    top: auto;
+    bottom: max(16px, env(safe-area-inset-bottom));
     left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 2rem 3rem;
+    transform: translateX(-50%);
+    padding: 1rem 1.5rem;
     border-radius: 12px;
-    font-size: 1.3rem;
+    font-size: 1rem;
     font-weight: 600;
     color: white;
     text-align: center;
@@ -1440,11 +1441,17 @@ textarea:focus-visible {
     max-width: 90%;
     min-width: 300px;
     line-height: 1.5;
+    pointer-events: none;
 }
 
 .toast-message.show {
     display: block;
-    animation: fadeInScale 0.3s ease;
+    animation: toastAppear 0.2s ease;
+}
+
+@keyframes toastAppear {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .toast-message.error {

@@ -688,3 +688,7 @@ Backup перед додаванням таблиці: `backup_initial/warehouse
 Записуй незавершену роботу, якщо вона є. Не зберігай паролі, ключі, cookies.
 Перед завершенням цієї сесії всі останні запитані зміни Pre-sort виконані;
 незавершених реалізацій за останнім дорученням немає.
+
+## GitHub presentations (2026-11-03)
+
+Updated the four existing presentation*.pptx files with approved UK/EN/PL/RU versions: 20 slides each, translated notes and UI illustrations, preserved animations. Filenames unchanged. Verified ZIP integrity and exact hashes. Application and warehouse data unchanged.

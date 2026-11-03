@@ -49,6 +49,7 @@ Thumbs.db
 
 # Generated warehouse data and runtime logs
 *.log
-ocr_training_data/
-backup_initial/
+ocr_training_data/**/*
+backup_initial/*
+!backup_initial/.gitkeep
 .reset-staging/

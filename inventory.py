@@ -184,7 +184,7 @@ def register_inventory(app, db):
         code = str(value.get('icc_code', '')).strip().upper()
         setting = conn.execute('SELECT icc_validation_enabled FROM inventory_settings WHERE sort_id=?', (sort_id,)).fetchone()
         validation = not setting or bool(setting[0])
-        if not code or len(code) > 40 or (validation and not re.fullmatch(r'[A-Z]\d{5,7}' if kind == 'mix' else r'\d{4}', code)):
+        if not code or (kind != 'mix' and (len(code) > 40 or (validation and not re.fullmatch(r'\d{4}', code)))):
             raise InventoryError('Перевірте ICC код наклейки')
         label_pack = 0 if kind == 'mix' else integer(value.get('total_cartons'))
         location = '' if kind == 'mix' else str(value.get('location_code', '')).strip().upper()

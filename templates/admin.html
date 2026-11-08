@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='admin-presort.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='inventory-admin.css') }}">
     {% include '_theme.html' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='id-pack.css') }}">
 </head>
 <body>
     {% include '_back_navigation.html' %}
@@ -43,8 +44,20 @@
                 <button class="sort-subtab-btn active" onclick="showSortSubtab('sorting')">Товари в роботі</button>
                 <button class="sort-subtab-btn" onclick="showSortSubtab('completed')">Завершені товари</button>
                 <button class="sort-subtab-btn" onclick="showSortSubtab('pallets')">Палети SORT</button>
+                <button class="sort-subtab-btn" onclick="showSortSubtab('id-pack')">ID Pack</button>
                 <button class="sort-subtab-btn" onclick="showSortSubtab('create-sort')">Завдання та створення</button>
             </div>
+
+            <section id="admin-id-pack" class="sort-subtab-content" style="display:none;">
+                <h2>Групи ID Pack</h2>
+                <div class="id-pack-admin-filters">
+                    <label>Сорт<select id="id-pack-admin-sort"></select></label>
+                    <label>Тип<select id="id-pack-admin-type"><option value="single">Single</option><option value="mix">Mix</option></select></label>
+                    <button id="id-pack-admin-refresh" type="button" class="btn btn-secondary">Оновити дані</button>
+                </div>
+                <p id="id-pack-admin-status" role="status" aria-live="polite"></p>
+                <div id="id-pack-admin-groups"></div>
+            </section>
 
             <!-- Підвкладка: В процесі -->
             <div id="admin-sorting" class="sort-subtab-content">
@@ -474,6 +487,7 @@
     </div>
     <script src="{{ url_for('static', filename='admin.js') }}"></script>
     <script src="{{ url_for('static', filename='admin-presort.js') }}"></script>
+    <script src="{{ url_for('static', filename='admin-id-pack.js') }}"></script>
     <script src="{{ url_for('static', filename='inventory-admin.js') }}"></script>
     <script src="{{ url_for('static', filename='admin-mobile-helper.js') }}"></script>
 </body>

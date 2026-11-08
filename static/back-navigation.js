@@ -84,7 +84,7 @@
         return previous || (currentRoute && location.pathname !== '/dashboard' ? '/dashboard' : null);
     }
     function update() {
-        button.disabled = navigating || writesInProgress > 0 || !!window.hasPendingSortSave?.() || !!window.hasPendingCollectionSave?.() || !!window.hasPendingInventoryAdminSave?.() || !(topModal() || panelHistory.length || visible(byId('work-area'))
+        button.disabled = navigating || writesInProgress > 0 || !!window.hasPendingIdPackSave?.() || window.hasPendingSortSave?.() || !!window.hasPendingCollectionSave?.() || !!window.hasPendingInventoryAdminSave?.() || !(topModal() || panelHistory.length || visible(byId('work-area'))
             || visible(byId('sort-selection')) || (location.pathname === '/presort' && byId('container')?.value) || previousRoute());
     }
     function blocked() {
@@ -96,10 +96,11 @@
     async function back() {
         if (navigating) return;
         notice.textContent = '';
-        if (writesInProgress || window.hasPendingSortSave?.() || window.hasPendingCollectionSave?.() || window.hasPendingInventoryAdminSave?.()) { blocked(); return; }
+        if (writesInProgress || window.hasPendingIdPackSave?.() || window.hasPendingSortSave?.() || window.hasPendingCollectionSave?.() || window.hasPendingInventoryAdminSave?.()) { blocked(); return; }
         navigating = true; update();
         try {
             const modal = topModal();
+            if (modal?.id !== 'camera-modal' && window.idPackBackHandler?.()) return;
             if (modal?.id !== 'camera-modal' && window.collectionBackHandler?.()) return;
             if (modal?.id === 'inventory-admin-modal' && window.inventoryAdminBackHandler?.()) return;
             if (modal) {

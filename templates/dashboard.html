@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='collection.css') }}">
     {% include '_theme.html' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='id-pack.css') }}">
 </head>
 <body class="dashboard-page">
     {% include '_back_navigation.html' %}
@@ -52,6 +53,7 @@
             <button class="btn btn-large btn-primary" onclick="checkContainerAndShowSortMenu()">SORT</button>
             <a href="/presort" class="btn btn-large btn-success">PRE-SORT</a>
         </div>
+        <section id="id-pack-recovery" hidden role="status"><p>Збереження ID Pack не підтверджене. Поверніться до операції та повторіть запит.</p><button id="id-pack-recover" type="button" class="btn btn-warning">Повернутися до ID Pack</button></section>
         <section id="sort-pending-notice" hidden style="padding: 1rem; margin: 1rem 0; background: #fff3cd; border-radius: 12px;" role="status">
             <p id="sort-pending-text"></p>
             <button id="sort-retry-btn" type="button" class="btn btn-warning" onclick="retryPendingSortSave()">Повторити збереження</button>
@@ -120,6 +122,7 @@
                     <small>Початкове розміщення у Pre-sort. Відбір із цих палет тут не списується.</small>
                 </section>
 
+                {% include '_id_pack.html' %}
                 <!-- Новий єдиний інтерфейс для Single -->
                 <div id="single-input-section" style="display: none;">
                     <!-- Кнопка камери зверху -->
@@ -127,6 +130,7 @@
                         <button id="camera-scan-btn" class="btn btn-large btn-primary" onclick="openCameraScanner()">
                             📷 Сканувати
                         </button>
+                        <button type="button" class="btn btn-large btn-primary id-pack-open" onclick="openIdPack()">▥ ID Pack</button>
                     </div>
 
                     <div class="form-card">
@@ -155,12 +159,13 @@
                         <button class="btn btn-large btn-primary" onclick="openCameraScannerMix()">
                             📷 Сканувати
                         </button>
+                        <button type="button" class="btn btn-large btn-primary id-pack-open" onclick="openIdPack()">▥ ID Pack</button>
                     </div>
 
                     <div class="form-card">
                         <div class="form-group">
                             <label for="mix-icc-code-input">ICC код Mix</label>
-                            <input type="text" id="mix-icc-code-input" placeholder="Введіть код з наклейки" autocomplete="off" maxlength="10" style="text-transform: uppercase;">
+                            <input type="text" id="mix-icc-code-input" placeholder="Введіть код з наклейки" autocomplete="off" style="text-transform: uppercase;">
                         </div>
                         <button class="btn btn-large btn-success" data-label-submit onclick="submitMixData()" style="width: 100%; margin-top: 0.5rem;">
                             Продовжити ➜
@@ -306,9 +311,10 @@
                     <canvas id="camera-canvas" style="display: none;"></canvas>
                 </div>
             </div>
+            {% include '_ocr_preparation.html' %}
             <div class="camera-controls">
                 <button id="flash-toggle-btn" class="btn btn-medium btn-secondary" onclick="toggleFlash()">🔆 Спалах</button>
-                <button class="btn btn-large btn-primary" onclick="capturePhoto()">📸 Зробити фото</button>
+                <button id="camera-capture" class="btn btn-large btn-primary" onclick="capturePhoto()" disabled>📸 Зробити фото</button>
                 <div id="scan-status" class="scan-status"></div>
             </div>
             <div id="scan-result" class="scan-result" style="display: none;"></div>
@@ -339,8 +345,10 @@
         const userId = {{ user['id'] }};
         const userRole = "{{ user['role'] }}";
     </script>
+    <script src="{{ url_for('static', filename='ocr-ready.js') }}"></script>
     <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
     <script src="{{ url_for('static', filename='sort-presort.js') }}"></script>
     <script src="{{ url_for('static', filename='collection.js') }}"></script>
+    <script src="{{ url_for('static', filename='id-pack.js') }}"></script>
 </body>
 </html>

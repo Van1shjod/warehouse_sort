@@ -98,7 +98,7 @@ def register_sorting(app, db):
         if kind not in ('single', 'mix', 'vevor'):
             raise SortError('Оберіть Single, Mix або Vevor')
         code = str(data.get('icc_code', '')).strip().upper()
-        if not re.fullmatch(r'[A-Z]\d{5,7}' if kind == 'mix' else r'\d{4}', code):
+        if not code or (kind != 'mix' and not re.fullmatch(r'\d{4}', code)):
             raise SortError('Перевірте ICC код наклейки')
         pack = 0 if kind == 'mix' else integer(data.get('total_cartons'), 'PACK')
         location = '' if kind == 'mix' else str(data.get('location_code', '')).strip().upper()

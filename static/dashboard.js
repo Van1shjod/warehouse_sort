@@ -1334,6 +1334,13 @@ async function openCameraScanner() {
     const statusDiv = document.getElementById('scan-status');
 
     modal.style.display = 'flex';
+    const preparation = window.ocrReadiness?.prepare() || Promise.resolve(true);
+    document.getElementById('camera-capture').disabled = true;
+    preparation.catch(error => {
+        if (generation !== cameraGeneration) return;
+        statusDiv.textContent = error.message;
+        statusDiv.className = 'scan-status error';
+    });
     statusDiv.textContent = 'Завантаження камери...';
     statusDiv.className = 'scan-status scanning';
 
@@ -1351,6 +1358,8 @@ async function openCameraScanner() {
         if (generation !== cameraGeneration) { stream.getTracks().forEach(track => track.stop()); return; }
         cameraStream = stream;
         video.srcObject = cameraStream;
+        await video.play();
+        if (generation !== cameraGeneration) return;
 
         // Скинути стан кнопки спалаху
         flashEnabled = false;
@@ -1361,13 +1370,19 @@ async function openCameraScanner() {
             flashBtn.style.color = '';
         }
 
+        statusDiv.textContent = '';
+        if (generation !== cameraGeneration) return;
+        document.getElementById('camera-capture').disabled = false;
         statusDiv.textContent = 'Камера готова. Наведіть на наклейку і натисніть кнопку фото.';
         statusDiv.className = 'scan-status';
 
     } catch (error) {
         if (generation !== cameraGeneration) return;
+        cameraStream?.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+        window.ocrReadiness?.cancel();
         console.error('Помилка доступу до камери:', error);
-        statusDiv.textContent = 'Помилка доступу до камери. Дозвольте доступ у налаштуваннях браузера.';
+        statusDiv.textContent = error.name === 'NotAllowedError' ? 'Помилка доступу до камери. Дозвольте доступ у налаштуваннях браузера.' : error.message;
         statusDiv.className = 'scan-status error';
     }
 }
@@ -1375,6 +1390,7 @@ async function openCameraScanner() {
 // Закрити камеру
 async function closeCameraScanner() {
     cameraGeneration++;
+    window.ocrReadiness?.cancel();
     const modal = document.getElementById('camera-modal');
     const video = document.getElementById('camera-video');
     const statusDiv = document.getElementById('scan-status');
@@ -1822,6 +1838,13 @@ async function openCameraScannerMix() {
     const statusDiv = document.getElementById('scan-status');
 
     modal.style.display = 'flex';
+    const preparation = window.ocrReadiness?.prepare() || Promise.resolve(true);
+    document.getElementById('camera-capture').disabled = true;
+    preparation.catch(error => {
+        if (generation !== cameraGeneration) return;
+        statusDiv.textContent = error.message;
+        statusDiv.className = 'scan-status error';
+    });
     statusDiv.textContent = 'Завантаження камери...';
     statusDiv.className = 'scan-status scanning';
 
@@ -1837,17 +1860,23 @@ async function openCameraScannerMix() {
         if (generation !== cameraGeneration) { stream.getTracks().forEach(track => track.stop()); return; }
         cameraStream = stream;
         video.srcObject = cameraStream;
-        video.play();
+        await video.play();
+        statusDiv.textContent = '';
+        if (generation !== cameraGeneration) return;
+        document.getElementById('camera-capture').disabled = false;
 
         statusDiv.textContent = '📸 Наведіть на MIX наклейку';
         statusDiv.className = 'scan-status ready';
 
     } catch (error) {
         if (generation !== cameraGeneration) return;
+        cameraStream?.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+        window.ocrReadiness?.cancel();
         console.error('Помилка доступу до камери:', error);
-        statusDiv.textContent = '❌ Помилка доступу до камери';
+        statusDiv.textContent = error.name === 'NotAllowedError' ? 'Помилка доступу до камери. Дозвольте доступ у налаштуваннях браузера.' : error.message;
         statusDiv.className = 'scan-status error';
-        setTimeout(() => { if (generation === cameraGeneration) closeCameraScanner(); }, 2000);
+        // Keep the explanation visible until the user closes the camera.
     }
 }
 
@@ -1863,12 +1892,6 @@ async function submitMixData() {
 
     if (!iccCode) {
         showToast('⚠️ Введіть ICC код MIX!', 'error');
-        focusWorkInput(document.getElementById('mix-icc-code-input'));
-        return;
-    }
-
-    if (!/^[A-Z]\d{5,7}$/.test(iccCode)) {
-        showToast('⚠️ Неправильний формат MIX коду!\nОчікується: літера + 5-7 цифр (наприклад: D980989)', 'error', 4000);
         focusWorkInput(document.getElementById('mix-icc-code-input'));
         return;
     }

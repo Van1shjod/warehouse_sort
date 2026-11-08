@@ -142,7 +142,7 @@ test('saving a carton prevents navigating away or a duplicate submit', async () 
 test('SORT closes and releases a camera even if permission arrives after back', async () => {
     for (const type of ['single','mix']) {
         const app=screen(); const modal=app.element('camera-modal','modal');
-        ['camera-video','scan-status','scan-result','flash-toggle-btn'].forEach(id=>app.element(id));
+        ['camera-video','scan-status','scan-result','flash-toggle-btn','camera-capture'].forEach(id=>app.element(id));
         app.document.getElementById('camera-video').play=async()=>{};
         let grant, stopped=0;
         app.context.navigator={mediaDevices:{getUserMedia:()=>new Promise(resolve=>{grant=resolve;})}};

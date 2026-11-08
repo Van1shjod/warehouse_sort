@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const {randomUUID} = require('node:crypto');
 
 // Exercise camera/request lifecycle without requiring a physical webcam.
-async function setup(recognize) {
+async function setup(recognize, prepare) {
     const nodes = new Map(), requests = [];
     class Element {
         constructor() { this.style = {}; this.value = ''; this.options = []; this.children = []; }
@@ -49,11 +49,14 @@ async function setup(recognize) {
                 container: {status: 'active', type: 'single,mix', container_number: 'Rampa 1'},
                 pallets: [{id: 8, number: 1, user_id: 1, cartons: 0}], items: [], user_id: 1
             });
+            if (path === '/api/ocr/status') return response({ready: !prepare});
+            if (path === '/api/ocr/prepare') return prepare();
             if (path === '/api/ocr/recognize') return recognize ? recognize(options) : response({cell: '4567', qtyPack: 30, prefix: 'JP', zone: 'A'});
             if (path === '/api/presort/scans') return response({id: 1});
             throw new Error('Unexpected request: ' + path);
         }
     };
+    vm.runInNewContext(fs.readFileSync('static/ocr-ready.js', 'utf8'), context);
     vm.runInNewContext(fs.readFileSync('static/presort.js', 'utf8'), context);
     for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
     return {el, requests, navigator, stream, stopped: () => stopped};
@@ -100,4 +103,26 @@ test('double capture adds once and the open camera can scan the next carton', as
     app.el('camera-close').onclick();
     assert.equal(app.stopped(), 1);
     assert.equal(app.el('camera-modal').style.display, 'none');
+});
+
+test('camera can recognize while the model is preparing', async () => {
+    let finish, recognize;
+    const app = await setup(() => new Promise(resolve => {recognize = resolve;}),
+        () => new Promise(resolve => {finish = resolve;}));
+    await app.el('camera-scan-btn').onclick();
+    for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
+    assert.equal(app.el('camera-capture').disabled, false);
+    assert.equal(app.el('ocr-preparation').hidden, false);
+    const capture = app.el('camera-capture').onclick();
+    for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
+    assert.equal(app.requests.includes('/api/ocr/recognize'), true);
+    assert.equal(app.el('camera-capture').disabled, true);
+    finish({ok: true, json: async () => ({ready: true})});
+    for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
+    assert.equal(app.el('camera-capture').disabled, true); // Still recognizing, no second capture.
+    recognize({ok: true, json: async () => ({cell: '4567', qtyPack: 30, prefix: 'JP', zone: 'A'})});
+    await capture;
+    assert.equal(app.requests.filter(path => path === '/api/presort/scans').length, 1);
+    assert.equal(app.el('camera-capture').disabled, false);
+    assert.equal(app.el('ocr-preparation').hidden, true);
 });

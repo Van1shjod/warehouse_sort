@@ -1491,3 +1491,32 @@ textarea:focus-visible {
         max-width: 85%;
     }
 }
+
+/* Model preparation lives between the viewfinder and camera actions. */
+.ocr-preparation[hidden] { display: none; }
+.ocr-preparation {
+    margin: 0 20px 12px; padding: 16px 18px; border-radius: 16px;
+    background: color-mix(in srgb, var(--surface, #fff) 90%, #4285f4);
+    border: 1px solid color-mix(in srgb, var(--surface, #fff) 74%, #4285f4);
+    color: var(--dark, #25324a); text-align: left;
+}
+.ocr-preparation-heading { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.ocr-preparation p { margin: 6px 0 12px 29px; font-size: 13px; color: var(--secondary, #667085); }
+.ocr-preparation-spinner { width: 19px; height: 19px; flex: 0 0 19px; border: 2px solid #b2cdfa; border-top-color: #315ddc; border-radius: 50%; animation: ocr-spin 1s linear infinite; }
+.ocr-preparation-track { height: 5px; border-radius: 9px; overflow: hidden; background: #b2cdfa; }
+.ocr-preparation-track span { display: block; width: 35%; height: 100%; border-radius: inherit; background: #315ddc; animation: ocr-progress 1.3s ease-in-out infinite alternate; }
+@keyframes ocr-spin { to { transform: rotate(360deg); } }
+@keyframes ocr-progress { from { transform: translateX(-80%); } to { transform: translateX(265%); } }
+@media (max-width: 480px) { .ocr-preparation { margin: 0 10px 12px; padding: 13px; } }
+@media (prefers-reduced-motion: reduce) { .ocr-preparation-spinner, .ocr-preparation-track span { animation: none; } }
+
+html[data-theme='dark'] body .camera-modal-content { background: var(--surface); color: var(--dark); }
+@media (max-height: 500px) and (min-width: 480px) {
+    body .camera-container-wrapper { grid-row: 2 / span 2; }
+    body .ocr-preparation { grid-column: 2; margin: 0; padding: 10px; }
+    body .ocr-preparation p { margin: 4px 0 8px; }
+    body .camera-controls { grid-column: 2; }
+}
+
+body .camera-controls { min-width: 0; }
+body .camera-controls .btn { min-width: 0; white-space: normal; }

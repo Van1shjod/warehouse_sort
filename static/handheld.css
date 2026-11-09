@@ -1,0 +1,321 @@
+/*
+ * AUTOID Q9 — compact layout for 480×800 and smaller viewports.
+ * Triggered by physical screen size, not User-Agent.
+ * Portrait:  max-width 480 CSS px, max-height 850 CSS px
+ * Landscape: max-width 900 CSS px, max-height 480 CSS px
+ */
+@media (max-width: 480px) and (max-height: 850px),
+       (max-width: 900px) and (max-height: 480px) {
+
+    /* ── Root & scroll ─────────────────────────────── */
+    html {
+        scroll-padding-top: 56px;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    /* ── Fixed nav strip (back-button + theme toggle) ── */
+    body.has-site-back::before {
+        height: calc(env(safe-area-inset-top, 0px) + 48px);
+    }
+    body.has-site-back {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 48px);
+    }
+    body.has-theme-toggle:not(.has-site-back) {
+        padding-top: calc(env(safe-area-inset-top, 0px) + 52px);
+    }
+    body .site-back-button,
+    body .theme-toggle {
+        top: calc(env(safe-area-inset-top, 0px) + 2px);
+        min-height: 40px;
+        padding: 5px 9px;
+        font-size: 13px !important;
+    }
+    body .site-back-button { left: max(4px, env(safe-area-inset-left)); }
+    body .theme-toggle {
+        right: max(4px, env(safe-area-inset-right));
+        max-width: calc(100vw - 110px);
+    }
+    body .site-back-status {
+        top: calc(env(safe-area-inset-top, 0px) + 48px);
+        font-size: 12px;
+    }
+
+    /* ── Main navbar ──────────────────────────────── */
+    body.has-site-back .navbar {
+        top: calc(env(safe-area-inset-top, 0px) + 48px);
+    }
+    body .navbar { padding: 5px 8px; }
+    body .nav-content { gap: 4px; }
+    body .nav-content h2 { font-size: 13px; }
+    body .nav-right { gap: 3px; }
+    body .nav-right .btn {
+        min-height: 36px;
+        padding: 4px 7px;
+        font-size: 12px !important;
+    }
+    /* Hide main navbar during sort work — back/theme still visible */
+    body.sort-working > .navbar { display: none; }
+    body.sort-working #work-area { margin-top: 0; }
+
+    /* ── Container & cards ────────────────────────── */
+    body .container { padding: 6px 8px; }
+    body .work-card,
+    body .presort-card,
+    body .admin-tab-content { padding: 8px; border-radius: 10px; }
+    body .form-card { padding: 8px; }
+    body .work-header {
+        gap: 4px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+    }
+    body .work-header h2 { font-size: 13px; }
+    body .work-header .btn {
+        min-height: 36px;
+        padding: 4px 8px;
+        font-size: 12px !important;
+    }
+
+    /* ── Typography ───────────────────────────────── */
+    body h1 { font-size: 1.2rem; }
+    body h2 { font-size: 1.05rem; }
+    body h3 { font-size: 0.95rem; }
+
+    /* ── Buttons — override the 16px !important from style.css ── */
+    body button,
+    body .btn {
+        min-height: 42px;
+        padding: 8px 10px;
+        font-size: 14px !important;
+        border-radius: 8px;
+    }
+    body .btn-small {
+        min-height: 34px;
+        padding: 4px 7px;
+        font-size: 12px !important;
+    }
+    body .btn-large,
+    body .btn-medium {
+        min-height: 46px;
+        padding: 9px 12px;
+        font-size: 15px !important;
+    }
+
+    /* ── Form inputs ──────────────────────────────── */
+    body input,
+    body select,
+    body textarea {
+        font-size: 16px;   /* keep 16px to prevent iOS zoom */
+        min-height: 42px;
+        padding: 7px 9px;
+    }
+    body .form-group { margin-bottom: 7px; }
+    body .form-group label { font-size: 12px; margin-bottom: 3px; }
+
+    /* ── Dashboard: main actions (SORT / PRE-SORT) ── */
+    body .main-actions {
+        margin: 10px auto;
+        gap: 8px;
+    }
+    body .main-actions .btn {
+        min-height: 64px !important;
+        padding: 12px;
+        font-size: 1.35rem !important;
+    }
+
+    /* ── Dashboard: current-sort banner ─────────── */
+    body #current-sort-info {
+        margin-top: 8px;
+        padding: 8px 10px;
+    }
+    body #current-sort-info h2 { font-size: 1.1rem; }
+    body #current-sort-info p  { font-size: 0.8rem; margin: 2px 0; }
+    body #current-sort-info .btn {
+        min-height: 36px;
+        padding: 4px 8px;
+        font-size: 12px !important;
+    }
+
+    /* ── Dashboard: sort selection list ─────────── */
+    body #sort-selection { margin-top: 8px; }
+    body #sorts-list { gap: 6px !important; }
+
+    /* ── Single / Mix input sections ────────────── */
+    body .label-camera-action {
+        gap: 6px;
+        margin: 5px 0;
+        display: grid;
+        grid-template-columns: 1fr auto;
+    }
+    body .label-camera-action .btn {
+        min-height: 46px !important;
+        padding: 8px 8px;
+        font-size: 14px !important;
+    }
+    /* ID Pack button next to camera — auto width */
+    body .label-camera-action .id-pack-open {
+        min-width: 72px;
+        width: auto;
+    }
+    body #single-input-section .form-card,
+    body #mix-input-section .form-card { margin-top: 5px; }
+
+    /* ── Submit / Continue button ────────────────── */
+    body [data-label-submit] {
+        min-height: 46px;
+        padding: 10px;
+        font-size: 15px !important;
+    }
+
+    /* ── Type selector modal ─────────────────────── */
+    body .btn-type {
+        min-height: 52px !important;
+        font-size: 1.05rem !important;
+        padding: 10px;
+    }
+    body .modal-content .type-buttons { gap: 6px; margin: 10px 0; }
+
+    /* ── Confirmation / Quantity modal ───────────── */
+    body .modal:not(#camera-modal) {
+        padding: calc(env(safe-area-inset-top, 0px) + 52px) 6px 6px;
+        align-items: flex-start;
+    }
+    body .modal-content:not(.camera-modal-content) {
+        max-height: calc(100dvh - 60px);
+        padding: 10px;
+        width: 100%;
+        margin: 0;
+        border-radius: 10px;
+    }
+    body .modal-content h2 { font-size: 1rem; margin-bottom: 8px; }
+    body #progress-info-modal2,
+    body #progress-info-modal3 {
+        padding: 7px 8px;
+        margin-bottom: 6px;
+    }
+    body #progress-info-modal2 p,
+    body #progress-info-modal3 p { font-size: 0.85rem; }
+    body .progress-bar { height: 16px; margin-top: 4px; }
+
+    /* ── Camera modal ────────────────────────────── */
+    body .camera-header { margin-bottom: 5px; }
+    body .camera-header h2 { font-size: 15px; }
+    body .camera-header .btn {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 6px 8px;
+    }
+    body .camera-container-wrapper { margin-bottom: 5px; }
+    body .camera-container {
+        height: clamp(120px, 34dvh, 220px);
+    }
+    body .camera-controls { gap: 5px; }
+    body .camera-controls .btn {
+        min-height: 42px;
+        font-size: 13px !important;
+        padding: 7px 6px;
+    }
+    body .camera-controls .scan-status {
+        min-height: 0;
+        padding: 5px 7px;
+        font-size: 12px;
+    }
+    body .camera-controls .scan-status:not(.scanning):not(.error):not(.success) {
+        display: none;
+    }
+
+    /* ── OCR preparation block ───────────────────── */
+    body .ocr-preparation { margin: 0 0 6px; padding: 8px 10px; }
+    body .ocr-preparation-heading { font-size: 13px; }
+    body .ocr-preparation p { margin: 3px 0 6px; font-size: 11px; }
+
+    /* ── Collection / "Один товар" panel ────────── */
+    body .collection-step-header { margin-bottom: 3px; }
+    body .collection-step-header h3 { font-size: 14px; }
+    body .collection-step-header .collection-order {
+        min-height: 38px;
+        font-size: 12px;
+    }
+    body .collection-location { font-size: 34px; }
+    body .collection-status,
+    body #collection-source-count { margin: 4px 0; font-size: 12px; }
+    body #collection-source-form { gap: 5px; }
+    body #collection-source-form input,
+    body #collection-source-form button { min-height: 42px; padding: 7px; }
+
+    /* ── Pre-sort page ───────────────────────────── */
+    body .presort header { margin: 5px 0; }
+    body .presort header h1 { font-size: 1.15rem; }
+    body .presort-card { margin: 5px 0; }
+    body .presort label { margin: 4px 0 3px; font-size: 12px; }
+    body .presort input,
+    body .presort select { min-height: 42px; padding: 7px 9px; }
+    body .presort-fields { gap: 4px; }
+    body .presort .presort-camera { margin: 5px 0; }
+    body .presort-row { gap: 5px; }
+
+    /* ── ID Pack ─────────────────────────────────── */
+    body .id-pack-toolbar { gap: 5px; }
+    body .id-pack > .id-pack-toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+    body .id-pack-toolbar .btn {
+        min-height: 40px;
+        font-size: 12px !important;
+        padding: 5px 7px;
+        margin-top: 0;
+    }
+    body .id-pack-badge { padding: 5px; font-size: 12px; }
+    body.id-pack-working #id-pack-title {
+        position: absolute; width: 1px; height: 1px;
+        overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
+    }
+    body .id-pack .form-card { margin: 5px 0; }
+    body .id-pack label { margin: 3px 0; font-size: 12px; }
+    body .id-pack .btn { margin-top: 5px; }
+    body .id-pack-label { font-size: 22px; margin: 2px 0 6px; }
+    body .id-pack-message:not(:empty) { margin: 3px 0; padding: 5px 7px; font-size: 12px; }
+    body .id-pack-help { margin: 0; font-size: 11px; }
+    body #id-pack-collected:empty { display: none; }
+    body #id-pack-count:not([hidden]) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 3px 6px;
+    }
+    body #id-pack-count > span { grid-column: 1; grid-row: 1; align-self: center; font-size: 11px; }
+    body #id-pack-count > .id-pack-label { grid-column: 1; grid-row: 2; align-self: center; margin: 0; font-size: 20px; }
+    body #id-pack-count > .id-pack-toolbar { grid-column: 2; grid-row: 1; flex-wrap: nowrap; }
+    body #id-pack-count > .id-pack-toolbar strong { font-size: 11px; }
+    body #id-pack-manual { min-height: 40px; padding: 4px; font-size: 12px !important; }
+    body #id-pack-count > .id-pack-counter { grid-column: 2; grid-row: 2; margin: 0; line-height: 1.2; }
+    body .id-pack-counter strong { font-size: 28px; }
+    body #id-pack-collected { grid-column: 1 / -1; }
+    body #id-pack-scan-form { display: contents; }
+    body #id-pack-scan-form label,
+    body #id-pack-scan { grid-column: 1 / -1; }
+    body #id-pack-scan-form .btn,
+    body #id-pack-continue { margin-top: 3px; font-size: 12px; white-space: normal; }
+    body #id-pack-scan-form .btn { grid-column: 1; font-size: 11px !important; padding: 5px; }
+    body #id-pack-continue { grid-column: 2; }
+    body .id-pack-admin-filters { gap: 6px; margin: 6px 0; }
+    body .id-pack-admin-filters label { min-width: 90px; }
+    body .id-pack-group { padding: 8px; margin: 6px 0; }
+    body .id-pack-full-ids { padding-left: 16px; }
+    body .id-pack-full-ids li { font-size: 12px; }
+
+    /* ── Admin: tabs & filters ───────────────────── */
+    body .admin-tabs,
+    body .sort-subtabs,
+    body .tabs { gap: 4px; padding: 4px 0; margin-bottom: 6px; }
+    body .tab-btn,
+    body .sort-subtab-btn { min-height: 36px; padding: 5px 8px; font-size: 12px; }
+    body .admin-tab-content h2 { font-size: 1rem; }
+
+    /* ── Login page ──────────────────────────────── */
+    body.login-page .login-box { padding: 14px; }
+    body.login-page .login-box h1 { font-size: 1.25rem; margin-bottom: 10px; }
+
+    /* ── Toast ───────────────────────────────────── */
+    body #toast-message { font-size: 0.9rem; padding: 10px 14px; }
+}

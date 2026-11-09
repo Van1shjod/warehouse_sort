@@ -1,0 +1,22 @@
+Як перевірити сайт для AutoID Q9 через Chrome DevTools:
+
+1. Відкрийте сайт у Chrome/Edge
+2. Натисніть F12 (відкриється DevTools)
+3. Натисніть Ctrl+Shift+M (режим пристрою)
+4. Вгорі оберіть "Responsive" і встановіть:
+   - Ширина: 480px
+   - Висота: 800px
+   - Device Pixel Ratio: 1
+
+Або створіть власний пристрій:
+1. У меню пристроїв виберіть "Edit..."
+2. Натисніть "Add custom device"
+3. Налаштування:
+   - Device name: AutoID Q9
+   - Width: 480
+   - Height: 800
+   - Device pixel ratio: 1
+   - User agent: (залишити за замовчуванням)
+   - Device type: Mobile
+
+Тепер можете переглянути всі сторінки як на Q9!

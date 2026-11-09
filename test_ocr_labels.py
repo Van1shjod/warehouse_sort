@@ -51,7 +51,8 @@ class LabelParsingTests(unittest.TestCase):
                                    for code in ['D980289', 'D980989', 'D980989', 'D980989']])
         result, raw = recognize_label_image(np.zeros((20, 20, 3), dtype=np.uint8), 'mix', engine)
         self.assertEqual(result['cell'], 'D980989')
-        self.assertEqual(engine.call_count, 4)
+        # Optimized: early exit after gray+joined agree (3 calls instead of 4)
+        self.assertEqual(engine.call_count, 3)
 
     def test_cell_is_not_a_shipping_date(self):
         data = parse_label_text('2026-08-01 ICNo:ICC1008458260801213 1213 10 PACK 16 OH- PCS')

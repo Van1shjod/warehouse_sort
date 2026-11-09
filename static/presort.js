@@ -164,6 +164,7 @@
     function closeCamera() {
         if (cameraSaving) return;
         cameraGeneration++;
+        window.ocrReadiness?.cancel();
         recognition?.abort(); recognition = null;
         cameraStream?.getTracks().forEach(track => track.stop());
         cameraStream = null; flashEnabled = false;
@@ -181,6 +182,10 @@
         el('camera-capture').disabled = true;
         el('flash-toggle-btn').disabled = true;
         el('flash-toggle-btn').textContent = '🔆 Спалах';
+        const preparation = window.ocrReadiness?.prepare() || Promise.resolve(true);
+        preparation.catch(error => {
+            if (generation === cameraGeneration) cameraStatus(error.message, 'error');
+        });
         cameraStatus('Завантаження камери…', 'scanning');
         try {
             if (!navigator.mediaDevices?.getUserMedia) throw new Error('Камера недоступна. Відкрийте сайт через HTTPS або введіть дані вручну.');
@@ -192,12 +197,15 @@
             el('camera-video').srcObject = stream;
             await el('camera-video').play();
             if (generation !== cameraGeneration) return;
+            cameraStatus('');
+            if (generation !== cameraGeneration) return;
             el('camera-capture').disabled = false;
             el('flash-toggle-btn').disabled = !stream.getVideoTracks()[0].getCapabilities?.().torch;
             cameraStatus('Камера готова. Наведіть на наклейку і натисніть кнопку фото.');
         } catch (error) {
             if (generation !== cameraGeneration) return;
             cameraStream?.getTracks().forEach(track => track.stop()); cameraStream = null;
+            window.ocrReadiness?.cancel();
             cameraStatus(error.name === 'NotAllowedError' ? 'Дозвольте доступ до камери у налаштуваннях браузера.' : error.message, 'error');
         }
     };

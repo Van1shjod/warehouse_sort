@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='collection.css') }}">
     {% include '_theme.html' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='id-pack.css') }}">
 </head>
 <body class="dashboard-page">
     {% include '_back_navigation.html' %}
@@ -52,6 +53,7 @@
             <button class="btn btn-large btn-primary" onclick="checkContainerAndShowSortMenu()">SORT</button>
             <a href="/presort" class="btn btn-large btn-success">PRE-SORT</a>
         </div>
+        <section id="id-pack-recovery" hidden role="status"><p data-i18n="Збереження ID Pack не підтверджене. Поверніться до операції та повторіть запит.">Збереження ID Pack не підтверджене. Поверніться до операції та повторіть запит.</p><button id="id-pack-recover" type="button" class="btn btn-warning">Повернутися до ID Pack</button></section>
         <section id="sort-pending-notice" hidden style="padding: 1rem; margin: 1rem 0; background: #fff3cd; border-radius: 12px;" role="status">
             <p id="sort-pending-text"></p>
             <button id="sort-retry-btn" type="button" class="btn btn-warning" onclick="retryPendingSortSave()">Повторити збереження</button>
@@ -80,7 +82,7 @@
                 <p id="work-steps" hidden></p>
                 <aside id="collection-active-label" class="collection-active-label" hidden aria-live="polite"></aside>
                 <section id="collection-panel" class="collection-panel" hidden>
-                    <div class="collection-step-header"><h3 id="collection-heading">Оберіть товар</h3>
+                    <div class="collection-step-header" data-i18n="Оберіть товар"><h3 id="collection-heading">Оберіть товар</h3>
                         <div id="collection-order-row" hidden>
                             <label for="collection-order" class="collection-sr-only">Порядок обходу палет</label>
                             <select id="collection-order" class="collection-order" aria-label="Порядок обходу палет"><option value="asc">↑ За зростанням</option><option value="desc">↓ За спаданням</option></select>
@@ -105,12 +107,12 @@
                         <h3 id="collection-confirm-title"></h3>
                         <p id="collection-hint" class="collection-hint"></p>
                     </div>
-                    <div id="collection-empty" hidden><button id="collection-next-item" class="btn btn-primary" type="button">Обрати наступний товар</button></div>
+                    <div id="collection-empty" hidden data-i18n="Обрати наступний товар"><button id="collection-next-item" class="btn btn-primary" type="button">Обрати наступний товар</button></div>
                 </section>
 
                 <section id="presort-source-area" hidden style="padding: 1rem; margin-bottom: 1.5rem; background: #eaf2ff; border-radius: 12px;">
-                    <h3>Де знайти товар: палети з Pre-sort</h3>
-                    <p>Введіть або відскануйте наклейку, щоб знайти такий самий товар.</p>
+                    <h3 data-i18n="Де знайти товар: палети з Pre-sort">Де знайти товар: палети з Pre-sort</h3>
+                    <p data-i18n="Введіть або відскануйте наклейку, щоб знайти такий самий товар.">Введіть або відскануйте наклейку, щоб знайти такий самий товар.</p>
                     <div id="presort-source-results" aria-live="polite"></div>
                     <small>Кількість на момент завершення Pre-sort. Відбір із палет тут не списується.</small>
                 </section>
@@ -120,6 +122,7 @@
                     <small>Початкове розміщення у Pre-sort. Відбір із цих палет тут не списується.</small>
                 </section>
 
+                {% include '_id_pack.html' %}
                 <!-- Новий єдиний інтерфейс для Single -->
                 <div id="single-input-section" style="display: none;">
                     <!-- Кнопка камери зверху -->
@@ -127,6 +130,7 @@
                         <button id="camera-scan-btn" class="btn btn-large btn-primary" onclick="openCameraScanner()">
                             📷 Сканувати
                         </button>
+                        <button type="button" class="btn btn-large btn-primary id-pack-open" onclick="openIdPack()">▥ ID Pack</button>
                     </div>
 
                     <div class="form-card">
@@ -155,12 +159,13 @@
                         <button class="btn btn-large btn-primary" onclick="openCameraScannerMix()">
                             📷 Сканувати
                         </button>
+                        <button type="button" class="btn btn-large btn-primary id-pack-open" onclick="openIdPack()">▥ ID Pack</button>
                     </div>
 
                     <div class="form-card">
                         <div class="form-group">
                             <label for="mix-icc-code-input">ICC код Mix</label>
-                            <input type="text" id="mix-icc-code-input" placeholder="Введіть код з наклейки" autocomplete="off" maxlength="10" style="text-transform: uppercase;">
+                            <input type="text" id="mix-icc-code-input" placeholder="Введіть код з наклейки" autocomplete="off" style="text-transform: uppercase;">
                         </div>
                         <button class="btn btn-large btn-success" data-label-submit onclick="submitMixData()" style="width: 100%; margin-top: 0.5rem;">
                             Продовжити ➜
@@ -191,7 +196,7 @@
             <h2>Збір цього товару завершено</h2>
             <p style="font-size: 1.1rem; margin: 1.5rem 0;">
                 Кількість PACK для цієї наклейки вже зібрана.<br>
-                <strong>Це окрема нова партія з такою самою наклейкою?</strong>
+                <strong data-i18n="Це окрема нова партія з такою самою наклейкою?">Це окрема нова партія з такою самою наклейкою?</strong>
             </p>
             <div id="completed-pallet-row" hidden style="padding: 1rem; background: #fff3cd; border-radius: 8px;">
                 <p>Попередня палета SORT: <strong id="completed-pallet-number"></strong></p>
@@ -209,7 +214,7 @@
         <div class="modal-content fade-in">
             <h2>Скільки картонів додаємо зараз?</h2>
             <section id="presort-confirm-source" hidden style="text-align: left; padding: 1rem; margin: 1rem 0; background: #eaf2ff; border-radius: 8px;">
-                <h3>Звідки взяти: палети Pre-sort</h3><div id="presort-confirm-results"></div>
+                <h3 data-i18n="Звідки взяти: палети Pre-sort">Звідки взяти: палети Pre-sort</h3><div id="presort-confirm-results"></div>
             </section>
 
             <!-- Прогрес якщо товар вже існує -->
@@ -224,7 +229,7 @@
 
             <div class="form-card" style="margin-top: 1.5rem;">
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label>Кількість (шт)</label>
+                    <label data-i18n="Кількість (шт)">Кількість (шт)</label>
                     <input type="number" id="current-quantity-input" placeholder="Введіть кількість" min="1" autocomplete="off">
                 </div>
             </div>
@@ -241,7 +246,7 @@
         <div class="modal-content fade-in">
             <h2>Куди складаємо: палета SORT</h2>
             <section id="presort-location-source" hidden style="text-align: left; padding: 1rem; margin: 1rem 0; background: #eaf2ff; border-radius: 8px;">
-                <h3>Звідки взяти: палети Pre-sort</h3><div id="presort-location-results"></div>
+                <h3 data-i18n="Звідки взяти: палети Pre-sort">Звідки взяти: палети Pre-sort</h3><div id="presort-location-results"></div>
             </section>
 
             <!-- Прогрес -->
@@ -269,7 +274,7 @@
 
             <div class="form-card" style="margin-top: 1.5rem;">
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label>Номер палети SORT, на яку додаємо</label>
+                    <label data-i18n="Номер палети SORT, на яку додаємо">Номер палети SORT, на яку додаємо</label>
                     <input type="text" id="pallet-location-input" placeholder="Введіть або відскануйте" autocomplete="off" style="text-transform: uppercase;">
                 </div>
             </div>
@@ -306,9 +311,10 @@
                     <canvas id="camera-canvas" style="display: none;"></canvas>
                 </div>
             </div>
+            {% include '_ocr_preparation.html' %}
             <div class="camera-controls">
                 <button id="flash-toggle-btn" class="btn btn-medium btn-secondary" onclick="toggleFlash()">🔆 Спалах</button>
-                <button class="btn btn-large btn-primary" onclick="capturePhoto()">📸 Зробити фото</button>
+                <button id="camera-capture" class="btn btn-large btn-primary" onclick="capturePhoto()" disabled>📸 Зробити фото</button>
                 <div id="scan-status" class="scan-status"></div>
             </div>
             <div id="scan-result" class="scan-result" style="display: none;"></div>
@@ -317,7 +323,7 @@
 
     <!-- Toast повідомлення -->
     <section id="collection-resume" class="container collection-panel" hidden>
-        <p>Є незавершене збирання «Один товар».</p>
+        <p data-i18n="Є незавершене збирання «Один товар».">Є незавершене збирання «Один товар».</p>
         <button id="collection-resume-button" class="btn btn-primary" type="button">Продовжити збирання</button>
     </section>
     <div id="collection-mode" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="collection-mode-title">
@@ -331,7 +337,7 @@
         </div>
     </div>
     <div id="vevor-development" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="vevor-development-title">
-        <div class="modal-content collection-development"><h2 id="vevor-development-title">🚧 У розробці</h2><p>Сортування Vevor буде доступне пізніше.</p><button type="button" class="btn btn-secondary" onclick="collectionBackHandler()">До вибору типу</button></div>
+        <div class="modal-content collection-development"><h2 id="vevor-development-title">🚧 У розробці</h2><p>Сортування Vevor буде доступне пізніше.</p data-i18n="До вибору типу"><button type="button" class="btn btn-secondary" onclick="collectionBackHandler()">До вибору типу</button></div>
     </div>
     <div id="toast-message" class="toast-message"></div>
 
@@ -339,8 +345,10 @@
         const userId = {{ user['id'] }};
         const userRole = "{{ user['role'] }}";
     </script>
+    <script src="{{ url_for('static', filename='ocr-ready.js') }}"></script>
     <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
     <script src="{{ url_for('static', filename='sort-presort.js') }}"></script>
     <script src="{{ url_for('static', filename='collection.js') }}"></script>
+    <script src="{{ url_for('static', filename='id-pack.js') }}"></script>
 </body>
 </html>

@@ -3,6 +3,7 @@ from functools import wraps
 from database import Database
 from datetime import datetime
 import os
+import threading
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -17,10 +18,24 @@ register_sorting(app, db)
 
 from inventory import register_inventory
 register_inventory(app, db)
+from id_pack import register_id_pack
+register_id_pack(app, db)
 app.config['VEVOR_UNAVAILABLE'] = True
 
 # RapidOCR - швидка альтернатива PaddleOCR для Windows
 ocr_engine = None
+ocr_init_lock = threading.Lock()
+
+
+def ensure_ocr_engine():
+    """Initialize once, including concurrent camera/recognition requests."""
+    global ocr_engine
+    with ocr_init_lock:
+        if ocr_engine is None:
+            from rapidocr_onnxruntime import RapidOCR
+            ocr_engine = RapidOCR()
+        return ocr_engine
+
 
 
 @app.before_request
@@ -274,6 +289,25 @@ def get_user_activity_admin(user_id):
     activity = db.get_user_activity(user_id)
     return jsonify(activity), 200
 
+@app.route('/api/ocr/status')
+@login_required
+def ocr_status():
+    response = jsonify(ready=ocr_engine is not None)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.route('/api/ocr/prepare', methods=['POST'])
+@login_required
+def prepare_ocr():
+    try:
+        ensure_ocr_engine()
+        return jsonify(ready=True)
+    except Exception:
+        app.logger.exception('OCR initialization failed')
+        return jsonify(error='Не вдалося підготувати сканер. Закрийте камеру та спробуйте ще раз.'), 503
+
+
 # OCR endpoint для розпізнавання наклейок
 @app.route('/api/ocr/recognize', methods=['POST'])
 @login_required
@@ -287,16 +321,11 @@ def recognize_label():
     from datetime import datetime
 
     try:
-        # Lazy loading: ініціалізувати RapidOCR при першому використанні
-        if ocr_engine is None:
-            try:
-                from rapidocr_onnxruntime import RapidOCR
-                print('Ініціалізація RapidOCR...')
-                ocr_engine = RapidOCR()
-                print('RapidOCR готовий!')
-            except Exception as init_error:
-                print(f'Помилка ініціалізації RapidOCR: {init_error}')
-                return jsonify({'error': 'OCR недоступний. Не вдалося завантажити RapidOCR'}), 503
+        try:
+            ensure_ocr_engine()
+        except Exception:
+            app.logger.exception('OCR initialization failed')
+            return jsonify({'error': 'OCR недоступний. Не вдалося завантажити RapidOCR'}), 503
 
         # Отримати зображення та тип картону з запиту
         if 'image' not in request.files:

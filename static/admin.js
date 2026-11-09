@@ -144,6 +144,8 @@ function showSortSubtab(subtab) {
         loadCompletedData();
     } else if (subtab === 'pallets') {
         loadPallets();
+    } else if (subtab === 'id-pack') {
+        window.loadAdminIdPack?.();
     } else if (subtab === 'create-sort') {
         loadActiveSorts();
     }

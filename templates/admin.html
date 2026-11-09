@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='admin-presort.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='inventory-admin.css') }}">
     {% include '_theme.html' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='id-pack.css') }}">
 </head>
 <body>
     {% include '_back_navigation.html' %}
@@ -43,8 +44,20 @@
                 <button class="sort-subtab-btn active" onclick="showSortSubtab('sorting')">Товари в роботі</button>
                 <button class="sort-subtab-btn" onclick="showSortSubtab('completed')">Завершені товари</button>
                 <button class="sort-subtab-btn" onclick="showSortSubtab('pallets')">Палети SORT</button>
+                <button class="sort-subtab-btn" onclick="showSortSubtab('id-pack')">ID Pack</button>
                 <button class="sort-subtab-btn" onclick="showSortSubtab('create-sort')">Завдання та створення</button>
             </div>
+
+            <section id="admin-id-pack" class="sort-subtab-content" style="display:none;">
+                <h2>Групи ID Pack</h2>
+                <div class="id-pack-admin-filters">
+                    <label>Сорт<select id="id-pack-admin-sort"></select></label>
+                    <label>Тип<select id="id-pack-admin-type"><option value="single">Single</option><option value="mix">Mix</option></select></label>
+                    <button id="id-pack-admin-refresh" type="button" class="btn btn-secondary">Оновити дані</button>
+                </div>
+                <p id="id-pack-admin-status" role="status" aria-live="polite"></p>
+                <div id="id-pack-admin-groups"></div>
+            </section>
 
             <!-- Підвкладка: В процесі -->
             <div id="admin-sorting" class="sort-subtab-content">
@@ -54,12 +67,12 @@
                         <thead>
                             <tr>
                                 <th>ICC Код</th>
-                                <th>Тип</th>
-                                <th>Прогрес</th>
-                                <th>Локація</th>
-                                <th>Відкриті палети</th>
-                                <th>Статус</th>
-                                <th>Дії</th>
+                                <th data-i18n="Тип">Тип</th>
+                                <th data-i18n="Прогрес">Прогрес</th>
+                                <th data-i18n="Локація">Локація</th>
+                                <th data-i18n="Відкриті палети">Відкриті палети</th>
+                                <th data-i18n="Статус">Статус</th>
+                                <th data-i18n="Дії">Дії</th>
                             </tr>
                         </thead>
                         <tbody id="sorting-table-body">
@@ -81,12 +94,12 @@
                         <thead>
                             <tr>
                                 <th>ICC Код</th>
-                                <th>Тип</th>
-                                <th>Кількість</th>
-                                <th>Локація</th>
-                                <th>Палет</th>
-                                <th>Створено</th>
-                                <th>Дії</th>
+                                <th data-i18n="Тип">Тип</th>
+                                <th data-i18n="Кількість">Кількість</th>
+                                <th data-i18n="Локація">Локація</th>
+                                <th data-i18n="Палет">Палет</th>
+                                <th data-i18n="Створено">Створено</th>
+                                <th data-i18n="Дії">Дії</th>
                             </tr>
                         </thead>
                         <tbody id="completed-table-body">
@@ -117,13 +130,13 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Номер палети</th>
-                                <th>Тип</th>
-                                <th>Товар / локація</th>
-                                <th>Картонів</th>
-                                <th>Користувач</th>
-                                <th>Статус</th>
-                                <th>Створено</th>
+                                <th data-i18n="Номер палети">Номер палети</th>
+                                <th data-i18n="Тип">Тип</th>
+                                <th data-i18n="Товар / локація">Товар / локація</th>
+                                <th data-i18n="Картонів">Картонів</th>
+                                <th data-i18n="Користувач">Користувач</th>
+                                <th data-i18n="Статус">Статус</th>
+                                <th data-i18n="Створено">Створено</th>
                             </tr>
                         </thead>
                         <tbody id="pallets-table-body">
@@ -146,10 +159,10 @@
                 <div style="margin-bottom: 2rem;">
                     <label for="admin-task-status" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Показати завдання</label>
                     <select id="admin-task-status" onchange="loadActiveSorts()" style="padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem;">
-                        <option value="all">Усі статуси</option>
-                        <option value="active">Активні</option>
-                        <option value="paused">Призупинені</option>
-                        <option value="closed">Закриті</option>
+                        <option value="all" data-i18n="Усі статуси">Усі статуси</option>
+                        <option value="active" data-i18n="Активні">Активні</option>
+                        <option value="paused" data-i18n="Призупинені">Призупинені</option>
+                        <option value="closed" data-i18n="Закриті">Закриті</option>
                     </select>
                     <div id="active-sorts-list" style="display: grid; gap: 1rem;">
                         <div style="text-align: center; padding: 2rem; background: #f5f5f5; border-radius: 8px;">
@@ -172,7 +185,7 @@
                         </div>
                         <!-- Тип локації -->
                         <div class="form-group">
-                            <label>Тип локації *</label>
+                            <label data-i18n="Тип локації *">Тип локації *</label>
                             <select id="sort-location-type" onchange="updateLocationOptions()" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
                                 <option value="">-- Оберіть тип --</option>
                                 <option value="zona-single">Zona Single (A, B, C)</option>
@@ -191,7 +204,7 @@
 
                         <!-- Типи картонів -->
                         <div class="form-group">
-                            <label>Типи картонів (можна вибрати кілька) *</label>
+                            <label data-i18n="Типи картонів (можна вибрати кілька) *">Типи картонів (можна вибрати кілька) *</label>
                             <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem 1rem; background: #f5f5f5; border-radius: 8px; border: 2px solid transparent;">
                                     <input type="checkbox" id="type-single" value="single" onchange="updateSortPreview()">
@@ -210,19 +223,19 @@
 
                         <!-- Дата розвантаження (опціонально) -->
                         <div class="form-group">
-                            <label>Дата розвантаження (опціонально)</label>
+                            <label data-i18n="Дата розвантаження (опціонально)">Дата розвантаження (опціонально)</label>
                             <input type="date" id="sort-unload-date" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
                         </div>
 
                         <!-- Примітки -->
                         <div class="form-group">
-                            <label>Примітки (опціонально)</label>
+                            <label data-i18n="Примітки (опціонально)">Примітки (опціонально)</label>
                             <textarea id="sort-notes" placeholder="Додаткова інформація про сорт..." rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; resize: vertical;"></textarea>
                         </div>
 
                         <!-- Попередній перегляд -->
                         <div id="sort-preview" style="display: none; margin-top: 1rem; padding: 1rem; background: #e3f2fd; border-radius: 8px; border: 2px solid #2196F3;">
-                            <strong>Попередній перегляд:</strong>
+                            <strong data-i18n="Попередній перегляд:">Попередній перегляд:</strong>
                             <div id="sort-preview-text" style="margin-top: 0.5rem; font-size: 1.1rem; color: #0d47a1;"></div>
                         </div>
 
@@ -237,20 +250,20 @@
         <section id="admin-presort" class="admin-tab-content" style="display: none;">
             <h2>Картони з Pre-sort</h2>
             <div class="admin-presort-controls">
-                <div><label for="admin-presort-job">Завдання</label>
-                    <select id="admin-presort-job"><option value="">Оберіть Pre-sort</option></select></div>
+                <div data-i18n="Завдання"><label for="admin-presort-job">Завдання</label>
+                    <select id="admin-presort-job"><option value="" data-i18n="Оберіть Pre-sort">Оберіть Pre-sort</option></select></div>
                 <button id="admin-presort-refresh" class="btn btn-primary">Оновити</button>
             </div>
             <p id="admin-presort-summary"></p>
             <div class="admin-presort-controls">
-                <div><label for="admin-presort-view">Вигляд</label>
-                    <select id="admin-presort-view"><option value="products">Список товарів</option><option value="scans">Журнал додавань</option></select></div>
+                <div data-i18n="Вигляд"><label for="admin-presort-view">Вигляд</label>
+                    <select id="admin-presort-view" data-i18n="Список товарів"><option value="products">Список товарів</option data-i18n="Журнал додавань"><option value="scans" data-i18n="Журнал додавань">Журнал додавань</option></select></div>
                 <div><label id="admin-presort-query-label" for="admin-presort-query">Пошук за кодом, локацією або PACK</label>
                     <input id="admin-presort-query" type="search" maxlength="120" placeholder="Наприклад: 4567 або JP-A"></div>
-                <div><label for="admin-presort-type">Тип</label>
-                    <select id="admin-presort-type"><option value="all">Усі типи</option><option value="single">Single</option><option value="mix">Mix</option><option value="vevor">Vevor</option></select></div>
-                <div id="admin-presort-status-field" hidden><label for="admin-presort-status">Записи</label>
-                    <select id="admin-presort-status"><option value="valid">Додані</option><option value="all">Усі, включно зі скасованими</option><option value="undone">Скасовані</option></select></div>
+                <div data-i18n="Тип"><label for="admin-presort-type">Тип</label>
+                    <select id="admin-presort-type" data-i18n="Усі типи"><option value="all" data-i18n="Усі типи">Усі типи</option><option value="single">Single</option><option value="mix">Mix</option><option value="vevor">Vevor</option></select></div>
+                <div id="admin-presort-status-field" hidden data-i18n="Записи"><label for="admin-presort-status">Записи</label>
+                    <select id="admin-presort-status" data-i18n="Додані"><option value="valid">Додані</option data-i18n="Усі, включно зі скасованими"><option value="all">Усі, включно зі скасованими</option data-i18n="Скасовані"><option value="undone" data-i18n="Скасовані">Скасовані</option></select></div>
             </div>
             <p id="admin-presort-view-note">Додані картони підраховані без скасувань. План — PACK із наклейки; після переведення в SORT це підсумок Pre-sort, а не залишок після відбору.</p>
             <p id="admin-presort-message" role="status" aria-live="polite">Оберіть завдання для перегляду.</p>
@@ -268,7 +281,7 @@
         <section id="admin-inventory" class="admin-tab-content" style="display: none;">
             <h2>Рухи та залишки</h2>
             <div class="inventory-admin-controls">
-                <div><label for="inventory-admin-job">Завдання</label><select id="inventory-admin-job"><option value="">Оберіть завдання</option></select></div>
+                <div data-i18n="Завдання"><label for="inventory-admin-job">Завдання</label><select id="inventory-admin-job" data-i18n="Оберіть завдання"><option value="" data-i18n="Оберіть завдання">Оберіть завдання</option></select></div>
                 <button id="inventory-admin-refresh" class="btn btn-primary">Оновити</button>
                 <button id="inventory-admin-users" class="btn btn-secondary">Створити користувача</button>
             </div>
@@ -280,15 +293,15 @@
                     <button id="inventory-admin-close-job" class="btn btn-warning">Закрити сорт</button>
                 </div>
                 <p id="inventory-admin-icc-note"></p>
-                <div class="inventory-admin-controls"><div><label for="inventory-admin-search">Пошук за товаром, палетою або працівником</label><input id="inventory-admin-search" type="search" placeholder="Код, букви, номер палети" maxlength="120"></div></div>
-                <h3>Товари</h3>
-                <div class="table-container"><table class="data-table"><thead><tr><th>Товар</th><th>Тип</th><th>Очікується</th><th>Зібрано</th><th>Дії</th></tr></thead><tbody id="inventory-admin-packs"></tbody></table></div>
-                <h3>Палети й поточні залишки</h3>
+                <div class="inventory-admin-controls"><div data-i18n="Пошук за товаром, палетою або працівником"><label for="inventory-admin-search">Пошук за товаром, палетою або працівником</label><input id="inventory-admin-search" type="search" placeholder="Код, букви, номер палети" maxlength="120"></div></div>
+                <h3 data-i18n="Товари">Товари</h3>
+                <div class="table-container"><table class="data-table"><thead><tr data-i18n="Товар"><th>Товар</th data-i18n="Тип"><th>Тип</th data-i18n="Очікується"><th>Очікується</th data-i18n="Зібрано"><th>Зібрано</th data-i18n="Дії"><th data-i18n="Дії">Дії</th></tr></thead><tbody id="inventory-admin-packs"></tbody></table></div>
+                <h3 data-i18n="Палети й поточні залишки">Палети й поточні залишки</h3>
                 <div id="inventory-admin-pallets" class="inventory-admin-pallets"></div>
-                <h3>Хто працює із завданням</h3>
+                <h3 data-i18n="Хто працює із завданням">Хто працює із завданням</h3>
                 <div id="inventory-admin-workers"></div>
-                <h3>Історія рухів</h3>
-                <div class="table-container"><table class="data-table"><thead><tr><th>Час</th><th>Товар</th><th>Палета</th><th>Рух</th><th>Працівник</th><th>Причина / операція</th><th>Дії</th></tr></thead><tbody id="inventory-admin-movements"></tbody></table></div>
+                <h3 data-i18n="Історія рухів">Історія рухів</h3>
+                <div class="table-container"><table class="data-table"><thead><tr data-i18n="Час"><th>Час</th data-i18n="Товар"><th>Товар</th data-i18n="Палета"><th>Палета</th data-i18n="Рух"><th>Рух</th data-i18n="Працівник"><th data-i18n="Працівник">Працівник</th><th>Причина / операція</th data-i18n="Дії"><th data-i18n="Дії">Дії</th></tr></thead><tbody id="inventory-admin-movements"></tbody></table></div>
             </div>
         </section>
 
@@ -300,12 +313,12 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Логін</th>
-                            <th>Роль</th>
-                            <th>Статус</th>
-                            <th>Картонів</th>
-                            <th>Реєстрація</th>
-                            <th>Дії</th>
+                            <th data-i18n="Логін">Логін</th>
+                            <th data-i18n="Роль">Роль</th>
+                            <th data-i18n="Статус">Статус</th>
+                            <th data-i18n="Картонів">Картонів</th>
+                            <th data-i18n="Реєстрація">Реєстрація</th>
+                            <th data-i18n="Дії">Дії</th>
                         </tr>
                     </thead>
                     <tbody id="users-table-body">
@@ -339,10 +352,10 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Час</th>
-                                    <th>Користувач</th>
-                                    <th>Дія</th>
-                                    <th>Деталі</th>
+                                    <th data-i18n="Час">Час</th>
+                                    <th data-i18n="Користувач">Користувач</th>
+                                    <th data-i18n="Дія">Дія</th>
+                                    <th data-i18n="Деталі">Деталі</th>
                                 </tr>
                             </thead>
                             <tbody id="activity-table-body">
@@ -381,15 +394,15 @@
             <div class="form-card">
                 <form id="create-account-form">
                     <div class="form-group">
-                        <label>Логін</label>
+                        <label data-i18n="Логін">Логін</label>
                         <input type="text" id="account-username" required autocomplete="off" placeholder="Введіть логін">
                     </div>
                     <div class="form-group">
-                        <label>Пароль</label>
+                        <label data-i18n="Пароль">Пароль</label>
                         <input type="password" id="account-password" required autocomplete="new-password" placeholder="Введіть пароль">
                     </div>
                     <div class="form-group">
-                        <label>Роль</label>
+                        <label data-i18n="Роль">Роль</label>
                         <select id="account-role" class="form-select">
                             <option value="user">User (Звичайний користувач)</option>
                             <option value="admin">Admin (Повний доступ)</option>
@@ -411,19 +424,19 @@
                     <input type="text" id="edit-icc-code" readonly style="background: #f0f0f0;">
                 </div>
                 <div class="form-group">
-                    <label>Тип</label>
+                    <label data-i18n="Тип">Тип</label>
                     <input type="text" id="edit-icc-type" readonly style="background: #f0f0f0;">
                 </div>
                 <div class="form-group">
-                    <label>Загальна кількість (PACK)</label>
+                    <label data-i18n="Загальна кількість (PACK)">Загальна кількість (PACK)</label>
                     <input type="number" id="edit-total-cartons" min="1">
                 </div>
                 <div class="form-group">
-                    <label>Поточна кількість (зібрано)</label>
+                    <label data-i18n="Поточна кількість (зібрано)">Поточна кількість (зібрано)</label>
                     <input type="number" id="edit-current-cartons" min="0">
                 </div>
                 <div class="form-group">
-                    <label>Кодові букви (локація)</label>
+                    <label data-i18n="Кодові букви (локація)">Кодові букви (локація)</label>
                     <input type="text" id="edit-location-code" style="text-transform: uppercase;">
                 </div>
                 <div style="margin-top: 2rem; display: flex; gap: 1rem;">
@@ -468,12 +481,13 @@
             <form id="inventory-admin-editor-form">
                 <div id="inventory-admin-editor-fields"></div>
                 <p id="inventory-admin-editor-message" role="status" aria-live="polite"></p>
-                <div class="inventory-admin-controls"><button id="inventory-admin-editor-cancel" type="button" class="btn btn-secondary">Скасувати</button><button id="inventory-admin-editor-save" type="submit" class="btn btn-success">Зберегти</button></div>
+                <div class="inventory-admin-controls" data-i18n="Скасувати"><button id="inventory-admin-editor-cancel" type="button" class="btn btn-secondary">Скасувати</button data-i18n="Зберегти"><button id="inventory-admin-editor-save" type="submit" class="btn btn-success">Зберегти</button></div>
             </form>
         </div>
     </div>
     <script src="{{ url_for('static', filename='admin.js') }}"></script>
     <script src="{{ url_for('static', filename='admin-presort.js') }}"></script>
+    <script src="{{ url_for('static', filename='admin-id-pack.js') }}"></script>
     <script src="{{ url_for('static', filename='inventory-admin.js') }}"></script>
     <script src="{{ url_for('static', filename='admin-mobile-helper.js') }}"></script>
 </body>

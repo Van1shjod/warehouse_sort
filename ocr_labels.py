@@ -51,7 +51,10 @@ def parse_label_text(text):
 
 def parse_mix_text(text):
     data = empty_label()
-    codes = re.findall(r'\b([A-Z]{1,2}\d{5,7})\b', normalize(text))
+    # MIX has no prescribed prefix, length or character pattern. Keep OCR
+    # regions separate rather than picking a code from ambiguous label text.
+    text = re.sub(r'\s+MADE\s+IN\s+CHINA\b.*', '', normalize(text))
+    codes = [line.strip() for line in text.splitlines() if line.strip()]
     data['cell'] = consensus(codes)
     return data
 
@@ -176,6 +179,90 @@ def read_label_panel(image_rgb, engine):
     return {field: consensus([p[field] for p in proposals]) for field in FIELDS}, raw
 
 
+def find_mix_code_crops(rgb):
+    """Find the code row on a large white label, without assuming code format."""
+    import cv2
+    import numpy as np
+    h,w=rgb.shape[:2]
+    scale=min(1,1000/max(h,w))
+    small=cv2.resize(rgb,None,fx=scale,fy=scale)
+    hsv=cv2.cvtColor(small,cv2.COLOR_RGB2HSV)
+    mask=cv2.inRange(hsv,np.array([0,0,165]),np.array([179,75,255]))
+    mask=cv2.morphologyEx(mask,cv2.MORPH_OPEN,np.ones((5,5),np.uint8))
+    mask=cv2.morphologyEx(mask,cv2.MORPH_CLOSE,np.ones((7,7),np.uint8))
+    found=[]
+    contours = cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[0]
+    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:4]:
+        x,y,cw,ch=cv2.boundingRect(contour)
+        if cw*ch<small.shape[0]*small.shape[1]*.025 or not .55<cw/ch<2.2:continue
+        if cv2.contourArea(contour)/(cw*ch)<.65:continue
+        x,y,cw,ch=[int(v/scale) for v in (x,y,cw,ch)]
+        region=rgb[y+int(ch*.025):y+int(ch*.40),x+int(cw*.07):x+int(cw*.93)]
+        gray=cv2.cvtColor(region,cv2.COLOR_RGB2GRAY)
+        binary=cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)[1]
+        rows=(binary>0).sum(axis=1)>max(2,gray.shape[1]*.025)
+        runs=[];start=None
+        for i,on in enumerate(np.r_[rows,False]):
+            if on and start is None:start=i
+            if not on and start is not None:
+                if i-start>=max(8,ch*.02):runs.append((start,i))
+                start=None
+        if not runs:continue
+        top,bottom=max(runs,key=lambda band:binary[band[0]:band[1]].sum())
+        ys,xs=np.where(binary[top:bottom]>0)
+        if not len(xs):continue
+        left,right=int(xs.min()),int(xs.max())+1
+        pad=max(4,int((bottom-top)*.18))
+        roi=gray[max(0,top-pad):min(len(gray),bottom+pad),max(0,left-pad):min(gray.shape[1],right+pad)]
+        found.append(roi)
+    return found
+
+def read_mix_code_fast(rgb, engine):
+    """Confirm a cropped code in multiple views; keep full-image OCR as fallback."""
+    import cv2
+    if not callable(getattr(engine, 'text_recognizer', None)):
+        return None, {}
+    proposals, raw = [], {}
+    for index, roi in enumerate(find_mix_code_crops(rgb)):
+        # More processing variants for better recognition
+        views = [
+            cv2.cvtColor(roi, cv2.COLOR_GRAY2BGR),
+            cv2.cvtColor(cv2.createCLAHE(2, (8, 8)).apply(roi), cv2.COLOR_GRAY2BGR),
+            cv2.cvtColor(cv2.createCLAHE(3, (8, 8)).apply(roi), cv2.COLOR_GRAY2BGR),
+        ]
+        # Add binarized variant
+        binary = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+        views.append(cv2.cvtColor(255 - binary, cv2.COLOR_GRAY2BGR))
+        
+        if getattr(engine, 'use_angle_cls', False):
+            views, _, _ = engine.text_cls(views)
+        results, _ = engine.text_recognizer(views)
+        high_conf = []  # >= 0.75
+        medium_conf = []  # >= 0.70
+        for variant, (text, confidence) in enumerate(results):
+            raw[f'panel_mix_{index}_{variant}'] = text
+            text_norm = normalize(text).strip()
+            conf = float(confidence)
+            if conf >= .75 and text_norm:
+                high_conf.append(text_norm)
+            elif conf >= .70 and text_norm:
+                medium_conf.append(text_norm)
+        
+        # First look for agreement among high confidence (>=0.75)
+        if len(high_conf) >= 2 and len(set(high_conf)) == 1:
+            proposals.append(high_conf[0])
+        # If no high agreement, look for medium (>=0.70) but require majority
+        elif len(medium_conf) >= 3:
+            code_counts = Counter(medium_conf)
+            most_common = code_counts.most_common(1)
+            # Need clear majority (at least 3 of 4 match)
+            if most_common and most_common[0][1] >= 3:
+                proposals.append(most_common[0][0])
+    
+    unique = set(proposals)
+    return (next(iter(unique)) if len(unique) == 1 else None), raw
+
+
 def recognize_label_image(image_rgb, carton_type, engine):
     """Read known label fields first; run full-image OCR only when needed."""
     import io
@@ -185,6 +272,13 @@ def recognize_label_image(image_rgb, carton_type, engine):
     from PIL import Image
 
     raw = {}
+    if carton_type == 'mix':
+        code, fast_raw = read_mix_code_fast(image_rgb, engine)
+        raw.update(fast_raw)
+        if code:
+            data = empty_label()
+            data['cell'] = code
+            return data, raw
     panel = empty_label()
     if carton_type != 'mix':
         panel, panel_raw = read_label_panel(image_rgb, engine)
@@ -200,20 +294,25 @@ def recognize_label_image(image_rgb, carton_type, engine):
         Image.fromarray(image).save(buffer, format='JPEG')
         result, _ = engine(buffer.getvalue())
         if result:
-            raw[name] = ' '.join(line[1] for line in result)
+            raw[name] = ('\n' if carton_type == 'mix' else ' ').join(line[1] for line in result)
 
     if carton_type == 'mix':
-        joined = cv2.morphologyEx(gray, cv2.MORPH_OPEN,
-                                 cv2.getStructuringElement(cv2.MORPH_RECT, (5, 3)))
+        # Оптимізований fallback: спочатку найшвидші варіанти
         recognize_variant('gray', gray)
-        recognize_variant('joined', joined)
         gray_code = parse_mix_text(raw.get('gray', ''))['cell']
-        joined_code = parse_mix_text(raw.get('joined', ''))['cell']
-        if gray_code and gray_code == joined_code:
-            return parse_mix_text(gray_code), raw
+        if gray_code:
+            # Перевіряємо одним додатковим швидким варіантом
+            joined = cv2.morphologyEx(gray, cv2.MORPH_OPEN,
+                                     cv2.getStructuringElement(cv2.MORPH_RECT, (5, 3)))
+            recognize_variant('joined', joined)
+            joined_code = parse_mix_text(raw.get('joined', ''))['cell']
+            if gray_code == joined_code:
+                return parse_mix_text(gray_code), raw
+        # Якщо швидкі не допомогли, пробуємо решту
         recognize_variant('original', image_rgb)
-        contrast = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(gray)
-        recognize_variant('contrast', contrast)
+        if not gray_code:
+            contrast = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(gray)
+            recognize_variant('contrast', contrast)
     else:
         recognize_variant('original', image_rgb)
         dark_mask = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)[1]

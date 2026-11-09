@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Перевірка AutoID Q9</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+        }
+        .spec {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .spec strong {
+            color: #2c3e50;
+        }
+        .method {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .method h3 {
+            margin-top: 0;
+            color: #2e7d32;
+        }
+        .steps {
+            margin-left: 20px;
+        }
+        .steps li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e74c3c;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .checklist {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .checklist ul {
+            margin: 10px 0;
+        }
+        .checklist li {
+            margin: 5px 0;
+        }
+        .iframe-demo {
+            border: 2px solid #3498db;
+            margin: 20px 0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .iframe-demo iframe {
+            border: none;
+            display: block;
+        }
+        .device-frame {
+            width: 480px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #34495e;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .device-screen {
+            background: white;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .label {
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Перевірка AutoID Q9 сумісності</h1>
+
+        <div class="spec">
+            <h3>Специфікації AutoID Q9 (SEUIC Q9):</h3>
+            <ul>
+                <li><strong>Екран:</strong> 480 × 800 пікселів</li>
+                <li><strong>Діагональ:</strong> 4 дюйми</li>
+                <li><strong>DPI:</strong> ~233 точок на дюйм</li>
+                <li><strong>Орієнтація:</strong> Портретна (вертикальна)</li>
+            </ul>
+        </div>
+
+        <h2>Метод 1: Через Chrome/Edge DevTools (Рекомендовано)</h2>
+        <div class="method">
+            <h3>📐 Крок за кроком:</h3>
+            <ol class="steps">
+                <li>Відкрийте сайт у Chrome або Edge: <code>http://127.0.0.1:5000</code></li>
+                <li>Натисніть <code>F12</code> (відкриється панель розробника)</li>
+                <li>Натисніть <code>Ctrl+Shift+M</code> або клацніть на іконку 📱 (Toggle device toolbar)</li>
+                <li>Вгорі у списку пристроїв виберіть <strong>"Responsive"</strong></li>
+                <li>Встановіть розміри:
+                    <ul>
+                        <li>Ширина: <code>480</code></li>
+                        <li>Висота: <code>800</code></li>
+                    </ul>
+                </li>
+                <li>Перевірте всі сторінки: Dashboard, Sort, Pre-sort, Admin</li>
+            </ol>
+        </div>
+
+        <div class="method">
+            <h3>➕ Додати власний пристрій "AutoID Q9":</h3>
+            <ol class="steps">
+                <li>У режимі емуляції пристрою клацніть на список пристроїв</li>
+                <li>Виберіть <strong>"Edit..."</strong></li>
+                <li>Натисніть <strong>"Add custom device"</strong></li>
+                <li>Заповніть:
+                    <ul>
+                        <li>Device name: <code>AutoID Q9</code></li>
+                        <li>Width: <code>480</code></li>
+                        <li>Height: <code>800</code></li>
+                        <li>Device pixel ratio: <code>1</code></li>
+                        <li>User agent: (залишити за замовчуванням)</li>
+                        <li>Device type: <code>Mobile</code></li>
+                    </ul>
+                </li>
+                <li>Натисніть <strong>"Add"</strong></li>
+            </ol>
+        </div>
+
+        <h2>Метод 2: Зміна розміру вікна браузера</h2>
+        <div class="method">
+            <h3>🪟 Простий спосіб:</h3>
+            <ol class="steps">
+                <li>Відкрийте сайт у новому вікні браузера</li>
+                <li>Зменшіть ширину вікна до ~480px (наскільки можливо)</li>
+                <li>Встановіть масштаб 100% (<code>Ctrl+0</code>)</li>
+                <li>Перевірте, чи все видно без горизонтальної прокрутки</li>
+            </ol>
+        </div>
+
+        <h2>Метод 3: Демо-перегляд нижче</h2>
+        <div class="device-frame">
+            <div class="device-screen">
+                <iframe src="http://127.0.0.1:5000" width="480" height="800" title="AutoID Q9 Preview"></iframe>
+            </div>
+            <div class="label">AutoID Q9 (480×800px)</div>
+        </div>
+
+        <div class="checklist">
+            <h3>✅ Що перевіряти:</h3>
+            <ul>
+                <li>✓ Немає горизонтальної прокрутки</li>
+                <li>✓ Всі кнопки доступні і не обрізані</li>
+                <li>✓ Текст читабельний (не надто дрібний)</li>
+                <li>✓ Форми вміщуються на екрані</li>
+                <li>✓ Навігаційна панель компактна (48px)</li>
+                <li>✓ Камера займає ~34% висоти екрана</li>
+                <li>✓ Модальні вікна відкриваються зверху</li>
+                <li>✓ Toast-повідомлення видно</li>
+                <li>✓ ID Pack форми працюють коректно</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Важливо:</strong>
+            <ul>
+                <li>Handheld CSS активується автоматично при viewport ≤480×850px</li>
+                <li>Для реального Q9 можлива додаткова адаптація через Android WebView</li>
+                <li>Перевірте всі 4 мови (UK/EN/PL/RU)</li>
+                <li>Протестуйте світлу та темну теми</li>
+            </ul>
+        </div>
+
+        <h2>Швидка перевірка критичних сценаріїв:</h2>
+        <div class="method">
+            <ol class="steps">
+                <li><strong>Вхід:</strong> Форма входу видно повністю</li>
+                <li><strong>Dashboard:</strong> Кнопки SORT/PRE-SORT не перекриваються</li>
+                <li><strong>Sort Single:</strong> Камера + форма вміщуються</li>
+                <li><strong>Sort Mix:</strong> Все поле введення коду видно</li>
+                <li><strong>ID Pack:</strong> Поле коду + лічильник в один ряд</li>
+                <li><strong>Pre-sort:</strong> Камера залишається відкритою після додавання</li>
+                <li><strong>Admin:</strong> Таблиці з горизонтальною прокруткою працюють</li>
+            </ol>
+        </div>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ecf0f1; text-align: center; color: #7f8c8d;">
+            <p>Створено: 2026-11-09 | Warehouse System</p>
+        </div>
+    </div>
+</body>
+</html>

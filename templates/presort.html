@@ -18,7 +18,7 @@
     <header><h1>Pre-sort</h1></header>
     <section class="presort-card">
         <label for="container">Створений Pre-sort</label>
-        <select id="container"><option value="">Оберіть Pre-sort</option></select>
+        <select id="container"><option value="" data-i18n="Оберіть Pre-sort">Оберіть Pre-sort</option></select>
         <button id="refresh" class="btn btn-secondary">Оновити дані</button>
         {% if user.role == 'admin' %}
         <a href="/admin?tab=create-sort" class="btn btn-primary">Створити Pre-sort в адмінпанелі</a>
@@ -34,7 +34,7 @@
     <p id="message" role="status" aria-live="polite"></p>
     <div id="workspace" hidden>
         <section class="presort-card">
-            <div class="presort-row"><h2 id="pallet-title">Палету не відкрито</h2>
+            <div class="presort-row" data-i18n="Палету не відкрито"><h2 id="pallet-title">Палету не відкрито</h2>
                 <button id="open" class="btn btn-primary">Почати нову палету</button>
                 <button id="close" class="btn btn-danger" hidden>Палета повна — закрити</button>
             </div>
@@ -43,12 +43,12 @@
                 <fieldset id="scan-fields" disabled>
                     <label for="type">Тип наклейки</label>
                     <select id="type"><option value="single">Single</option><option value="mix">Mix</option><option value="vevor">Vevor</option></select>
-                    <div id="presort-vevor-notice" hidden style="padding:2rem;text-align:center;"><h2>🚧 У розробці</h2><p>Робота з картонами Vevor буде доступна пізніше.</p></div>
+                    <div id="presort-vevor-notice" hidden style="padding:2rem;text-align:center;"><h2>🚧 У розробці</h2><p data-i18n="Робота з картонами Vevor буде доступна пізніше.">Робота з картонами Vevor буде доступна пізніше.</p></div>
                     <div id="presort-label-controls">
                     <button id="camera-scan-btn" type="button" class="btn btn-large btn-primary presort-camera">📷 Сканувати наклейку</button>
                     <div class="presort-fields">
-                        <div><label for="code">ICC код</label><input id="code" autocomplete="off" required maxlength="20"></div>
-                        <div id="location-field"><label for="location">Кодові букви</label><input id="location" placeholder="JP-A" maxlength="4" autocomplete="off" required></div>
+                        <div><label for="code">ICC код</label><input id="code" autocomplete="off" required></div>
+                        <div id="location-field" data-i18n="Кодові букви"><label for="location">Кодові букви</label><input id="location" placeholder="JP-A" maxlength="4" autocomplete="off" required></div>
                         <div id="pack-field"><label for="pack">PACK на наклейці</label><input id="pack" type="number" min="1" max="999999999" required></div>
                     </div>
                     <button class="btn btn-success" type="submit">Додати</button>
@@ -82,6 +82,7 @@
                 <canvas id="camera-canvas" style="display: none;"></canvas>
             </div>
         </div>
+        {% include '_ocr_preparation.html' %}
         <div class="camera-controls">
             <button id="flash-toggle-btn" class="btn btn-medium btn-secondary" disabled>🔆 Спалах</button>
             <button id="camera-capture" class="btn btn-large btn-primary" disabled>📸 Зробити фото</button>
@@ -91,6 +92,7 @@
     </div>
 </div>
 <div id="carton-added-notice" class="carton-added-notice" role="status" aria-live="polite" hidden>✓ Картон додано</div>
+<script src="{{ url_for('static', filename='ocr-ready.js') }}"></script>
 <script src="{{ url_for('static', filename='presort.js') }}"></script>
 </body>
 </html>

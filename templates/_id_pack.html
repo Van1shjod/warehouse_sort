@@ -1,0 +1,44 @@
+<section id="id-pack-panel" class="id-pack" hidden aria-labelledby="id-pack-title">
+    <div class="id-pack-toolbar"><span class="id-pack-badge">▥ ID Pack · Закріплено</span data-i18n="Змінити спосіб"><button id="id-pack-exit" type="button" class="btn btn-secondary">Змінити спосіб</button></div>
+    <h2 id="id-pack-title">Сканування ID Pack</h2>
+    <p id="id-pack-message" class="id-pack-message" role="status" aria-live="polite"></p>
+    <form id="id-pack-identify-form" class="form-card">
+        <label for="id-pack-seed">ID Pack</label>
+        <input id="id-pack-seed" type="text" autocomplete="off" inputmode="none" placeholder="Зіскануйте повний ID Pack" required>
+        <button type="submit" class="btn btn-primary">Продовжити</button>
+    </form>
+    <form id="id-pack-expected-form" class="form-card" hidden>
+        <p class="id-pack-label mono" data-no-translate data-id-pack-prefix></p>
+        <label for="id-pack-expected">Очікувана кількість картонів</label>
+        <input id="id-pack-expected" type="number" min="1" max="999999999" step="1" inputmode="numeric" required>
+        <button type="submit" class="btn btn-primary">Почати сканування</button>
+    </form>
+    <section id="id-pack-count" class="form-card" hidden>
+        <span>Збираємо ID Pack</span><p class="id-pack-label mono" data-no-translate data-id-pack-prefix></p>
+        <div class="id-pack-toolbar" data-i18n="Маємо"><strong>Маємо</strong data-i18n="Змінити кількість"><button id="id-pack-manual" type="button" class="id-pack-link">Змінити кількість</button></div>
+        <p class="id-pack-counter"><strong id="id-pack-amount">0</strong> <span id="id-pack-total"></span></p>
+        <p id="id-pack-collected" class="id-pack-help"></p>
+        <form id="id-pack-scan-form">
+            <label for="id-pack-scan">ID Pack</label>
+            <input id="id-pack-scan" type="text" autocomplete="off" inputmode="none" placeholder="Наступний штрихкод…" required>
+            <button type="submit" class="btn btn-secondary">Підтвердити скан</button>
+        </form>
+        <button id="id-pack-continue" type="button" class="btn btn-success">Продовжити</button>
+    </section>
+    <form id="id-pack-pallet-form" class="form-card" hidden>
+        <p class="id-pack-label mono" data-no-translate data-id-pack-prefix></p><p id="id-pack-receipt-summary"></p>
+        <label for="id-pack-pallet">Палета SORT</label>
+        <input id="id-pack-pallet" type="text" maxlength="80" autocomplete="off" required>
+        <button id="id-pack-save" type="submit" class="btn btn-success">Готово</button>
+    </form>
+    <button id="id-pack-retry" type="button" class="btn btn-warning" hidden>Повторити збереження</button>
+</section>
+<div id="id-pack-quantity-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="id-pack-quantity-title">
+    <form id="id-pack-quantity-form" class="modal-content">
+        <h2 id="id-pack-quantity-title">Скільки маємо?</h2>
+        <label for="id-pack-quantity">Загальна наявна кількість</label>
+        <input id="id-pack-quantity" type="number" min="0" max="999999999" step="1" inputmode="numeric" required>
+        <p id="id-pack-quantity-error" role="alert"></p>
+        <div class="id-pack-actions" data-i18n="Скасувати"><button id="id-pack-quantity-cancel" type="button" class="btn btn-secondary">Скасувати</button data-i18n="Підтвердити"><button type="submit" class="btn btn-primary">Підтвердити</button></div>
+    </form>
+</div>

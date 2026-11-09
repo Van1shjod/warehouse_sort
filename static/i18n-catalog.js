@@ -721,4 +721,44 @@ Flask Додаток¦Flask application¦Aplikacja Flask¦Приложение F
 Відповідь API¦API response¦Odpowiedź API¦Ответ API
 Це Flask веб-додаток, який працює на Android через Termux.¦This is a Flask web application running on Android through Termux.¦To aplikacja internetowa Flask działająca na Androidzie przez Termux.¦Это веб-приложение Flask, работающее на Android через Termux.
 Хост: Ваш телефон¦Host: your phone¦Host: Twój telefon¦Хост: ваш телефон
+Підготовка сканера…¦Preparing scanner…¦Przygotowywanie skanera…¦Подготовка сканера…
+Завантаження OCR-моделі¦Loading OCR model¦Ładowanie modelu OCR¦Загрузка OCR-модели
+Не вдалося підготувати сканер. Закрийте камеру та спробуйте ще раз.¦Could not prepare scanner. Close the camera and try again.¦Nie udało się przygotować skanera. Zamknij kamerę i spróbuj ponownie.¦Не удалось подготовить сканер. Закройте камеру и попробуйте ещё раз.
+Сканування ID Pack¦ID Pack scanning¦Skanowanie ID Pack¦Сканирование ID Pack
+▥ ID Pack · Закріплено¦▥ ID Pack · Pinned¦▥ ID Pack · Przypięte¦▥ ID Pack · Закреплено
+Зіскануйте повний ID Pack¦Scan the full ID Pack¦Zeskanuj pełny ID Pack¦Отсканируйте полный ID Pack
+Очікувана кількість картонів¦Expected carton quantity¦Oczekiwana liczba kartonów¦Ожидаемое количество картонов
+Почати сканування¦Start scanning¦Rozpocznij skanowanie¦Начать сканирование
+Збираємо ID Pack¦Collecting ID Pack¦Zbieramy ID Pack¦Собираем ID Pack
+Маємо¦We have¦Mamy¦Имеем
+Змінити кількість¦Change quantity¦Zmień ilość¦Изменить количество
+із {0}¦of {0}¦z {0}¦из {0}
+картонів¦cartons¦kartonów¦картонов
+Уже збережено: {0}¦Already saved: {0}¦Już zapisano: {0}¦Уже сохранено: {0}
+Наступний штрихкод…¦Next barcode…¦Następny kod kreskowy…¦Следующий штрихкод…
+Підтвердити скан¦Confirm scan¦Potwierdź skan¦Подтвердить скан
+Додаємо: {0} картонів¦Adding: {0} cartons¦Dodajemy: {0} kartonów¦Добавляем: {0} картонов
+Загальна наявна кількість¦Total quantity on hand¦Łączna dostępna ilość¦Общее имеющееся количество
+Групи ID Pack¦ID Pack groups¦Grupy ID Pack¦Группы ID Pack
+Збережених груп ID Pack ще немає¦No saved ID Pack groups yet¦Brak zapisanych grup ID Pack¦Сохранённых групп ID Pack пока нет
+Сортів ще немає¦No sorting tasks yet¦Brak zadań sortowania¦Сортировок пока нет
+Груп: {0} · картонів: {1}¦Groups: {0} · cartons: {1}¦Grupy: {0} · kartony: {1}¦Групп: {0} · картонов: {1}
+Очікується: {0}¦Expected: {0}¦Oczekiwane: {0}¦Ожидается: {0}
+Додано вручну без ID: {0}¦Added manually without ID: {0}¦Dodano ręcznie bez ID: {0}¦Добавлено вручную без ID: {0}
+Введіть ID Pack (від 6 до 500 символів)¦Enter ID Pack (6 to 500 characters)¦Wprowadź ID Pack (od 6 do 500 znaków)¦Введите ID Pack (от 6 до 500 символов)
+Це інший картон¦This is a different carton¦To inny karton¦Это другой картон
+Не вдалося зберегти чернетку. Спробуйте ще раз.¦Could not save the draft. Try again.¦Nie udało się zapisać wersji roboczej. Spróbuj ponownie.¦Не удалось сохранить черновик. Попробуйте ещё раз.
+Введіть ціле число від 0¦Enter a whole number of 0 or more¦Wprowadź liczbę całkowitą od 0¦Введите целое число от 0
+Кількість не може бути меншою за число зісканованих ID.¦Quantity cannot be lower than the number of scanned IDs.¦Ilość nie może być mniejsza niż liczba zeskanowanych ID.¦Количество не может быть меньше числа отсканированных ID.
+Кількість перевищує очікувану¦Quantity exceeds the expected amount¦Ilość przekracza oczekiwaną¦Количество превышает ожидаемое
+Очікувана кількість: введіть ціле число більше нуля¦Expected quantity: enter a positive whole number¦Oczekiwana ilość: wprowadź dodatnią liczbę całkowitą¦Ожидаемое количество: введите целое число больше нуля
+Збереження не підтверджене. Повторіть запит.¦Save not confirmed. Retry the request.¦Zapis nie został potwierdzony. Ponów żądanie.¦Сохранение не подтверждено. Повторите запрос.
+Збереження ID Pack не підтверджене. Поверніться до операції та повторіть запит.¦ID Pack save is not confirmed. Return to the operation and retry.¦Zapis ID Pack nie został potwierdzony. Wróć do operacji i ponów żądanie.¦Сохранение ID Pack не подтверждено. Вернитесь к операции и повторите запрос.
+Повернутися до ID Pack¦Return to ID Pack¦Wróć do ID Pack¦Вернуться к ID Pack
+{0}: додано {1} · палета SORT {2}¦{0}: added {1} · SORT pallet {2}¦{0}: dodano {1} · paleta SORT {2}¦{0}: добавлено {1} · палета SORT {2}
+Очікувана кількість цієї групи вже задана. Перевірте дані.¦This group's expected quantity is already set. Check the data.¦Oczekiwana ilość tej grupy jest już ustalona. Sprawdź dane.¦Ожидаемое количество этой группы уже задано. Проверьте данные.
+Кількість перевищує очікувану. Уже додано {0} із {1}.¦Quantity exceeds the expected amount. Already added {0} of {1}.¦Ilość przekracza oczekiwaną. Dodano już {0} z {1}.¦Количество превышает ожидаемое. Уже добавлено {0} из {1}.
+Групу не знайдено¦Group not found¦Nie znaleziono grupy¦Группа не найдена
+Невірний список ID Pack¦Invalid ID Pack list¦Nieprawidłowa lista ID Pack¦Неверный список ID Pack
+Недостатньо символів ID Pack після початкових нулів.¦Not enough ID Pack characters after the leading zeros.¦Za mało znaków ID Pack po początkowych zerach.¦Недостаточно символов ID Pack после начальных нулей.
 `.trim().split('\n').map(line => line.split('¦').map(value=>value.replace(/\\n/g,'\n')));

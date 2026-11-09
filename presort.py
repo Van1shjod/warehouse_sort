@@ -404,7 +404,7 @@ def register_presort(app, db):
         token = str(data.get('request_id', ''))
         if kind not in ('single', 'mix', 'vevor'):
             raise ValueError('Оберіть тип товару')
-        if not re.fullmatch(r'[A-Z0-9]{4,20}' if kind == 'mix' else r'\d{4}', code):
+        if not code or (kind != 'mix' and not re.fullmatch(r'\d{4}', code)):
             raise ValueError('Перевірте ICC код')
         pack = 0 if kind == 'mix' else positive(data.get('pack'))
         location = '' if kind == 'mix' else location

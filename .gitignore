@@ -53,3 +53,5 @@ ocr_training_data/**/*
 backup_initial/*
 !backup_initial/.gitkeep
 .reset-staging/
+.termux/
+.codex-attachments/

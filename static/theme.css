@@ -226,10 +226,11 @@ html[data-theme='dark'] body :is(.btn-secondary,.btn-info,.nav-right .btn:not(.b
     background: #263853 !important; color: #d3e2ff !important; border-color: var(--border);
 }
 html[data-theme='dark'] body .btn-warning { background: #493a19 !important; color: #ffe19a !important; border-color: #806a32; }
-html[data-theme='dark'] body :is(input,select,textarea) { background: var(--surface) !important; color: var(--dark) !important; border-color: var(--border) !important; }
-html[data-theme='dark'] body input::placeholder { color: #a3b0c4; }
+html[data-theme='dark'] body :is(input,select,textarea) { background: #2a3648 !important; color: #e8eef7 !important; border-color: #3d4d63 !important; }
+html[data-theme='dark'] body input::placeholder { color: #8895a8; }
 html[data-theme='dark'] body :is(.site-back-button,.tab-btn,.sort-subtab-btn,.ocr-filter-btn,.pallet-filter-btn) { background: var(--surface); color: var(--dark); border-color: var(--border); }
-html[data-theme='dark'] body :is(.form-card,.collection-active-label,.collection-hint,.inventory-admin-pallet,.data-table th,.data-table tr:hover,.ocr-details,.scan-result) { background: var(--light); color: var(--dark); border-color: var(--border); }
+html[data-theme='dark'] body :is(.collection-active-label,.collection-hint,.inventory-admin-pallet,.data-table th,.data-table tr:hover,.ocr-details,.scan-result) { background: var(--light); color: var(--dark); border-color: var(--border); }
+html[data-theme='dark'] body .form-card { background: var(--surface) !important; color: var(--dark) !important; border-color: var(--border) !important; }
 html[data-theme='dark'] body :is(.collection-status,.collection-eyebrow,.collection-tools,.form-group label,.presort label) { color: var(--muted); }
 html[data-theme='dark'] body .collection-location { color: #a8c1ff; }
 html[data-theme='dark'] body :is(#message,#collection-message) { background: #193c32; color: #a5e8bc !important; }
@@ -254,6 +255,27 @@ html[data-theme='dark'] body :is(h1,h2,h3,h4,.image-card .info,.loading,#confirm
 html[data-theme='dark'] body :is([style*="color: rgb(51"],[style*="color: rgb(68"],[style*="color: rgb(85"],[style*="color: rgb(102"],[style*="color: rgb(153"]) { color: var(--muted) !important; }
 html[data-theme='dark'] body .status.success { background: #193c32; color: #a5e8bc; }
 html[data-theme='dark'] body .status.fail { background: #482632; color: #ffc1c7; }
+
+/* Additional dark theme rules for complete coverage */
+html[data-theme='dark'] body :is(.modal,.camera-modal) { background: rgba(13, 20, 32, 0.85); }
+html[data-theme='dark'] body .modal-content { background: var(--surface); color: var(--dark); border-color: var(--border); }
+html[data-theme='dark'] body :is(.camera-container,.camera-container-wrapper) { background: var(--surface); }
+html[data-theme='dark'] body :is(.camera-header,.camera-controls) { background: var(--light); color: var(--dark); border-color: var(--border); }
+html[data-theme='dark'] body :is(.guide-text,.camera-hint,.ocr-preparation p) { color: var(--muted); }
+html[data-theme='dark'] body :is(.login-container,.login-box) { background: var(--surface); color: var(--dark); }
+html[data-theme='dark'] body :is(.admin-tabs,.admin-presort-controls,.inventory-admin-controls) { background: var(--light); border-color: var(--border); }
+html[data-theme='dark'] body :is(.inventory-admin-editor,.inventory-admin-pallets) { background: var(--surface); border-color: var(--border); }
+html[data-theme='dark'] body .data-table { background: var(--surface); color: var(--dark); }
+html[data-theme='dark'] body .data-table td { border-color: var(--border); }
+html[data-theme='dark'] body :is(.table-container,.admin-task-actions) { background: transparent; }
+html[data-theme='dark'] body :is(.ocr-preparation,.ocr-preparation-heading) { background: var(--light); color: var(--dark); }
+html[data-theme='dark'] body .ocr-preparation-track { background: #34435b; }
+html[data-theme='dark'] body .ocr-preparation-track span { background: #6b8dd6; }
+html[data-theme='dark'] body :is(.id-pack-input,.id-pack-counter,.id-pack-controls) { background: var(--surface); color: var(--dark); border-color: var(--border); }
+html[data-theme='dark'] body :is(.id-pack-hint,.id-pack-status) { color: var(--muted); }
+html[data-theme='dark'] body .navbar { background: var(--surface); border-color: var(--border); }
+html[data-theme='dark'] body a { color: #6b8dd6; }
+html[data-theme='dark'] body a:hover { color: #8ca9e8; }
 
 /* Compact language selection shares the top strip with Back and Theme. */
 body .language-control { position: fixed; top: max(10px,env(safe-area-inset-top)); right: 152px; z-index: 20050; }
